@@ -1,5 +1,4 @@
 from app.services.gemini_gen_service import gemini_gen_service
-from app.services.gemini_service import gemini_service
 from app.services.litellm_service import litellm_service
 
 class LLMManager:
@@ -14,20 +13,12 @@ class LLMManager:
                 "gemini": gemini_gen_service,
                 "litellm": litellm_service
             }
-            # Mapping for embedding service
-            cls._instance.emb_services = {
-                "gemini": gemini_service,
-                "litellm": litellm_service
-            }
         return cls._instance
 
     def get_service(self):
         """Returns the generation service"""
         return self.gen_services.get(self.active_provider, gemini_gen_service)
 
-    def get_embedding_service(self):
-        """Returns the embedding service"""
-        return self.emb_services.get(self.active_provider, gemini_service)
 
     def set_provider(self, provider_name: str):
         if provider_name in self.gen_services:

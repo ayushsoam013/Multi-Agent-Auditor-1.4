@@ -17,7 +17,7 @@ def check_health(endpoint):
     except Exception as e:
         return "❌ Offline", str(e)
 
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("FastAPI Server")
@@ -33,12 +33,6 @@ with col2:
     if status.startswith("✅"):
         st.json(details)
 
-with col3:
-    st.subheader("Qdrant Service")
-    status, details = check_health("qdrant")
-    st.write(status)
-    if status.startswith("✅"):
-        st.json(details)
 
 if st.button("Refresh status"):
     st.rerun()

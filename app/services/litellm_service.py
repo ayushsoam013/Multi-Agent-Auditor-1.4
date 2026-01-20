@@ -4,17 +4,16 @@ from typing import List, Dict, Optional, Any
 from app.core.config import settings
 
 class LiteLLMService:
-    def __init__(self, model_name: str = None, embedding_model: str = None):
+    def __init__(self, model_name: str = None):
         # Read from environment variables or use defaults (without litellm_proxy/ prefix)
         default_model = getattr(settings, 'LITELLM_DEFAULT_MODEL', 'google/gemini-2.5-flash')
-        default_embedding = getattr(settings, 'LITELLM_DEFAULT_EMBEDDING_MODEL', 'google/text-embedding-004')
         
         self.model_name = model_name or default_model
-        self.embedding_model = embedding_model or default_embedding
         self.api_base = "https://imllm.intermesh.net/v1"
         self.api_key = settings.LITELLM_API_KEY or settings.GEMINI_API_KEY # Fallback/Usage
 
     def _ensure_litellm_proxy_prefix(self, model_name: str) -> str:
+
         """
         Ensure model name has litellm_proxy/ prefix.
         
@@ -146,33 +145,8 @@ class LiteLLMService:
             "model": model_name
         }
 
-    def generate_embedding(self, text: str, dimension: int = 768) -> List[float]:
-        model_name = self.embedding_model
-        # Ensure litellm_proxy/ prefix
-        model_name = self._ensure_litellm_proxy_prefix(model_name)
-
-        response = litellm.embedding(
-            model=model_name,
-            input=[text],
-            api_base=self.api_base,
-            api_key=self.api_key
-        )
-        return response['data'][0]['embedding']
-
-    def generate_batch_embeddings(self, texts: List[str], dimension: int = 768) -> List[List[float]]:
-        model_name = self.embedding_model
-        # Ensure litellm_proxy/ prefix
-        model_name = self._ensure_litellm_proxy_prefix(model_name)
-
-        response = litellm.embedding(
-            model=model_name,
-            input=texts,
-            api_base=self.api_base,
-            api_key=self.api_key
-        )
-        return [item['embedding'] for item in response['data']]
-
     def health_check(self) -> bool:
+
         try:
             # User requested specific health check via GET model URL
             response = requests.get(
