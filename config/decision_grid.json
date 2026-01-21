@@ -1,0 +1,31 @@
+{
+  "rules": [
+    {
+      "condition": {
+        "photo_quality_error": true
+      },
+      "action": "FAIL",
+      "reason": "Photo quality failed strict visibility standards.",
+      "confidence": 0.95
+    },
+    {
+      "condition": {
+        "title_quality_error": true
+      },
+      "action": "REVIEW",
+      "reason": "Title quality is sub-optimal.",
+      "confidence": 0.8
+    },
+    {
+      "condition": {
+        "photo_quality_error": false,
+        "title_quality_error": false,
+        "specs_quality_error": false
+      },
+      "action": "PASS",
+      "reason": "All agents verified product listing quality.",
+      "confidence": 0.98
+    }
+  ],
+  "default_action": "REVIEW"
+}
