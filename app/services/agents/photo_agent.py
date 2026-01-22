@@ -1,20 +1,25 @@
 import json
 import logging
-import base64
+import mimetypes
 from typing import Dict, Any, Optional
 from google.genai import types
 from app.services.agents.base_agent import BaseAgent
-from app.schemas.agent_schemas import AgentRequest, PhotoAgentResponse, PhotoAnalysisResult
+from app.schemas.agent_schemas import (
+    AgentRequest,
+    PhotoAgentResponse,
+    PhotoAnalysisResult,
+)
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class PhotoAgent(BaseAgent):
     def __init__(self, model_name: Optional[str] = None):
         super().__init__(
-            agent_name="PhotoAgent", 
+            agent_name="PhotoAgent",
             model_name=model_name or "gemini-1.5-flash",
-            response_class=PhotoAgentResponse
+            response_class=PhotoAgentResponse,
         )
 
     async def _process_logic(self, request: AgentRequest) -> Dict[str, Any]:
@@ -26,33 +31,38 @@ class PhotoAgent(BaseAgent):
 
         # Prepare prompt
         prompt = self._get_photo_prompt()
-        
+
         # Prepare parts (text + image)
         parts = [types.Part(text=prompt)]
-        
+
         if request.image_path:
             with open(request.image_path, "rb") as f:
                 image_data = f.read()
-                image_bytes = base64.b64encode(image_data).decode("utf-8")
-                parts.append(types.Part.from_bytes(
-                    data=image_data,
-                    mime_type="image/jpeg" # Default to jpeg, should ideally detect
-                ))
-        # Note: image_url handling would go here if needed, 
+                mime_type, _ = mimetypes.guess_type(request.image_path)
+                if not mime_type:
+                    mime_type = "image/jpeg"  # Fallback
+
+                parts.append(
+                    types.Part.from_bytes(
+                        data=image_data,
+                        mime_type=mime_type,
+                    )
+                )
+        # Note: image_url handling would go here if needed,
         # but usually we download it first in the orchestrator or api layer.
 
         # Call LLM
         response = await self.gen_service.chat_with_usage(
             messages=[{"role": "user", "content": parts}],
-            config={"response_mime_type": "application/json"}
+            config={"response_mime_type": "application/json"},
         )
-        
+
         raw_text = response.get("content", "{}")
         try:
             # Clean up potential markdown formatting if not handled by response_mime_type
             if raw_text.startswith("```json"):
                 raw_text = raw_text.strip("```json").strip("```").strip()
-            
+
             analysis_dict = json.loads(raw_text)
             return analysis_dict
         except Exception as e:

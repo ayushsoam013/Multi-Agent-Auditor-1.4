@@ -8,8 +8,14 @@ from app.services.llm_manager import llm_manager
 
 logger = logging.getLogger(__name__)
 
+
 class BaseAgent(ABC):
-    def __init__(self, agent_name: str, model_name: Optional[str] = None, response_class: type = BaseAgentResponse):
+    def __init__(
+        self,
+        agent_name: str,
+        model_name: Optional[str] = None,
+        response_class: type = BaseAgentResponse,
+    ):
         self.agent_name = agent_name
         self.model_name = model_name
         self.response_class = response_class
@@ -24,25 +30,23 @@ class BaseAgent(ABC):
         try:
             # Optional validation hook
             self._validate_input(request)
-            
+
             # Execute specific agent logic
             result_data = await self._process_logic(request)
-            
+
             processing_time = time.time() - start_time
-            
+
             return self._create_response(
                 status="success",
                 processing_time=processing_time,
-                raw_output=result_data
+                raw_output=result_data,
             )
-            
+
         except Exception as e:
             processing_time = time.time() - start_time
             logger.error(f"Error in {self.agent_name}: {str(e)}", exc_info=True)
             return self._create_response(
-                status="failure",
-                error_message=str(e),
-                processing_time=processing_time
+                status="failure", error_message=str(e), processing_time=processing_time
             )
 
     @abstractmethod
@@ -62,11 +66,18 @@ class BaseAgent(ABC):
         """
         Helper to create a standard response object.
         """
-        # If we have analysis data in raw_output, and the response class supports it
-        if "raw_output" in kwargs and self.response_class != BaseAgentResponse:
-            kwargs["analysis"] = kwargs["raw_output"]
+        raw_output = kwargs.get("raw_output")
 
-        return self.response_class(
-            agent_name=self.agent_name,
-            **kwargs
-        )
+        # If we have analysis data in raw_output, and the response class supports it
+        if raw_output and self.response_class != BaseAgentResponse:
+            kwargs["analysis"] = raw_output
+
+            # If the response class has specific fields that are also in raw_output,
+            # we can try to populate them for better accessibility.
+            # This is especially useful for the "Dumb" MasterAgent.
+            if isinstance(raw_output, dict):
+                for field_name in self.response_class.model_fields:
+                    if field_name in raw_output and field_name not in kwargs:
+                        kwargs[field_name] = raw_output[field_name]
+
+        return self.response_class(agent_name=self.agent_name, **kwargs)

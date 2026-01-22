@@ -1,0 +1,33 @@
+Photo - Category,Title - Category,Photo - Title,Photo - Specs,Title - Specs,English Message
+0,0,0,0,0,
+0,0,0,0,1,Review Title & Spec {A}
+0,0,0,1,0,Review Photo & Spec {A}
+0,0,0,1,1,"Specs {A,B,C...} Rejected"
+0,0,1,0,0,Review Title & Photo
+0,0,1,0,1,Title Rejected
+0,0,1,1,0,Photo Rejected
+0,0,1,1,1,Complete Product Rejected
+0,1,0,0,0,Review Title & Category {A}
+0,1,0,0,1,Title Rejected
+0,1,0,1,0,Complete Product Rejected
+0,1,0,1,1,Complete Product Rejected
+0,1,1,0,0,Title Rejected
+0,1,1,0,1,Title Rejected
+0,1,1,1,0,Complete Product Rejected
+0,1,1,1,1,Complete Product Rejected
+1,0,0,0,0,Review Photo & Category {A}
+1,0,0,0,1,Complete Product Rejected
+1,0,0,1,0,Photo Rejected
+1,0,0,1,1,Complete Product Rejected
+1,0,1,0,0,Photo Rejected
+1,0,1,0,1,Complete Product Rejected
+1,0,1,1,0,Photo Rejected
+1,0,1,1,1,Complete Product Rejected
+1,1,0,0,0,Category {A} Rejected
+1,1,0,0,1,Complete Product Rejected
+1,1,0,1,0,Complete Product Rejected
+1,1,0,1,1,Complete Product Rejected
+1,1,1,0,0,Complete Product Rejected
+1,1,1,0,1,Complete Product Rejected
+1,1,1,1,0,Complete Product Rejected
+1,1,1,1,1,Complete Product Rejected

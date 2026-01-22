@@ -10,20 +10,46 @@
     },
     {
       "condition": {
+        "title_contradiction_error": true
+      },
+      "action": "FAIL",
+      "reason": "Critical contradiction detected between Title and other product elements.",
+      "confidence": 0.9
+    },
+    {
+      "condition": {
+        "specs_contradiction_error": true
+      },
+      "action": "FAIL",
+      "reason": "Critical contradiction detected in product specifications.",
+      "confidence": 0.9
+    },
+    {
+      "condition": {
+        "category_error": true
+      },
+      "action": "REVIEW",
+      "reason": "Product categorization seems inaccurate or misaligned.",
+      "confidence": 0.85
+    },
+    {
+      "condition": {
         "title_quality_error": true
       },
       "action": "REVIEW",
-      "reason": "Title quality is sub-optimal.",
+      "reason": "Title quality is sub-optimal (spelling or duplication).",
       "confidence": 0.8
     },
     {
       "condition": {
         "photo_quality_error": false,
         "title_quality_error": false,
-        "specs_quality_error": false
+        "specs_quality_error": false,
+        "title_contradiction_error": false,
+        "specs_contradiction_error": false
       },
       "action": "PASS",
-      "reason": "All agents verified product listing quality.",
+      "reason": "All agents verified product listing quality with no contradictions.",
       "confidence": 0.98
     }
   ],
