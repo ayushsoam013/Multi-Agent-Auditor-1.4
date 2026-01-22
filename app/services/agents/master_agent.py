@@ -120,31 +120,31 @@ class MasterAgent(BaseAgent):
 
     def _get_master_prompt(self, request, photo, title, specs, cross_val, decision) -> str:
         return f"""
-You are the Master Auditor Agent. You have received reports from specialized agents:
-- Photo Agent Analysis: {json.dumps(photo.model_dump() if photo else {{}})}
-- Title Agent Analysis: {json.dumps(title.model_dump() if title else {{}})}
-- Specs Agent Analysis: {json.dumps(specs.model_dump() if specs else {{}})}
+            You are the Master Auditor Agent. You have received reports from specialized agents:
+            - Photo Agent Analysis: {json.dumps(photo.model_dump() if photo else {{}})}
+            - Title Agent Analysis: {json.dumps(title.model_dump() if title else {{}})}
+            - Specs Agent Analysis: {json.dumps(specs.model_dump() if specs else {{}})}
 
-Current Rule-Based Decision: {decision['action']} (Reason: {decision['reason']})
+            Current Rule-Based Decision: {decision['action']} (Reason: {decision['reason']})
 
-Your Task:
-1. Synthesize these findings into a concise reasoning list.
-2. Generate an optimized "Product Search Query" based on all verified entities.
-3. Identify cross-domain contradictions (Photo vs Title vs Specs).
+            Your Task:
+            1. Synthesize these findings into a concise reasoning list.
+            2. Generate an optimized "Product Search Query" based on all verified entities.
+            3. Identify cross-domain contradictions (Photo vs Title vs Specs).
 
-Return in strict JSON format:
-{{
-  "product_search_query": "string",
-  "final_errors": {{
-    "photo_quality_error": boolean,
-    "title_quality_error": boolean,
-    "title_contradiction_error": boolean,
-    "specs_quality_error": boolean,
-    "specs_contradiction_error": boolean,
-    "photo_category_error": boolean,
-    "title_category_error": boolean,
-    "category_contradiction_error": boolean
-  }},
-  "reasons": ["string"]
-}}
-"""
+            Return in strict JSON format:
+            {{
+            "product_search_query": "string",
+            "final_errors": {{
+                "photo_quality_error": boolean,
+                "title_quality_error": boolean,
+                "title_contradiction_error": boolean,
+                "specs_quality_error": boolean,
+                "specs_contradiction_error": boolean,
+                "photo_category_error": boolean,
+                "title_category_error": boolean,
+                "category_contradiction_error": boolean
+            }},
+            "reasons": ["string"]
+            }}
+        """
