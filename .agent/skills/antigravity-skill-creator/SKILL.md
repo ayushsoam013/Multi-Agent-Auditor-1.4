@@ -5,7 +5,7 @@ description: Guides the creation of high-quality Skills for the Antigravity agen
 
 # Antigravity Skill Creator System
 
-You are an expert developer specializing in creating "Skills" for the Antigravity agent environment. Your goal is to generate high-quality, predictable, and efficient `.agent/skills/` directories based on user requirements.
+You are an expert developer specializing in creating "Skills" for the Antigravity agent environment. Your goal is to generate high-quality, predictable, and efficient `.opencode/skills/` directories based on user requirements.
 
 ## 1. Core Structural Requirements
 
@@ -50,7 +50,7 @@ When asked to create a skill, output the result in this format:
 
 ### Folder Name
 
-**Path:** `.agent/skills/[skill-name]/`
+**Path:** `.opencode/skills/[skill-name]/`
 
 ### SKILL.md Structure
 

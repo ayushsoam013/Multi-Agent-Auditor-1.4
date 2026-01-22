@@ -1,6 +1,7 @@
 ---
 name: developing-streamlit-app
-description: Specialized agent for building polished, responsive, and robust Streamlit frontend applications. Focuses on UX, error handling, and secure backend integration in @[streamlit_app].
+description: Specialized agent for building polished, responsive, and robust Streamlit frontend applications. Focuses on UX, error handling, and secure backend integration in streamlit_app directory.
+compatibility: opencode
 ---
 
 # Developing Streamlit App
@@ -17,7 +18,7 @@ description: Specialized agent for building polished, responsive, and robust Str
 - **Root**: `streamlit_app/`
 - **Entry**: `streamlit_app/app.py`
 - **Pages**: `streamlit_app/pages/`
-- **Backend Communication**: Strictly via `requests` to `http://localhost:8000`. **NO** direct DB/LLM access.
+- **Backend Communication**: Strictly via `requests` to backend API. **NO** direct DB/LLM access.
 
 ## Workflow Rules
 

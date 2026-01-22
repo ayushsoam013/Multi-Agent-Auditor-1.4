@@ -1,95 +1,118 @@
-# Multi-Agent Auditor - Developer & Agent Guide
+# Multi-Agent Auditor - Agentic Coding Guide
 
-This document outlines the architecture, coding standards, and workflows for the Multi-Agent Auditor project. Agents operating in this codebase **must** adhere to these guidelines.
+This document defines the architecture, coding standards, and operational protocols for the Multi-Agent Auditor project. All agentic coding assistants **must** strictly adhere to these guidelines.
 
 ## 1. Project Overview & Architecture
 
 *   **Type**: Hybrid Application (FastAPI Backend + Streamlit Frontend).
 *   **Goal**: Automated auditing using Multi-Agent Systems (Gemini/LiteLLM) and Vector Search (Qdrant).
 *   **Key Constraints**:
-    *   **Decoupling**: Frontend (`streamlit_app/`) **NEVER** accesses the database, vector store, or LLMs directly. It must consume the FastAPI backend.
-    *   **Configuration**: All configuration (API keys, URLs) must be in `.env` and loaded via `app.core.config.settings`.
+    *   **Decoupling**: Frontend (`streamlit_app/`) **NEVER** interacts with the database, vector store, or LLMs directly. It communicates solely via the FastAPI backend.
+    *   **Configuration**: Secrets and environment-specific settings must reside in `.env` and be accessed via `app.core.config.settings`.
 
-### Directory Structure Map
-*   `app/` - **Backend (FastAPI)**
-    *   `main.py` - Entry point.
-    *   `api/v1/` - API Routes (Versioned).
-    *   `services/` - Business Logic & Agent Orchestration.
-    *   `models/` - Pydantic Data Models (DTOs).
-    *   `core/` - Config & Security.
-*   `streamlit_app/` - **Frontend (Streamlit)**
-    *   `app.py` - Entry point.
-    *   `pages/` - Individual tools/dashboards.
-*   `tests/` - Manual integration tests & scripts.
-*   `.agent/` - Agent skills and workflow definitions.
+### Directory Map
+*   `app/`: Backend (FastAPI) logic.
+    *   `api/v1/`: Versioned API endpoints and router definitions.
+    *   `services/`: Business logic, agent orchestration, and LLM integrations.
+    *   `schemas/`: Pydantic data models for validation and serialization.
+    *   `core/`: Core configuration, security, and shared utilities.
+*   `streamlit_app/`: Frontend (Streamlit) UI.
+    *   `app.py`: Main entry point.
+    *   `pages/`: Individual dashboard pages and tools.
+*   `tests/`: Integration and unit tests (mostly standalone scripts).
+*   `.opencode/`: Definitions for agent skills and workflow automations.
 
 ---
 
 ## 2. Build, Run & Test Commands
 
 ### Environment Setup
-Ensure `.env` exists (copy from `.env.example`).
-Dependencies are managed in `requirements.txt`.
+1.  **Dependencies**: `pip install -r requirements.txt`
+2.  **Environment**: Ensure `.env` is populated (see `.env.example`).
 
-### Running the Application
-*   **Backend**:
-    ```bash
-    python run_fast.py
-    # OR
-    uvicorn app.main:app --reload
-    ```
-    *   Runs on: `http://localhost:8000`
-    *   Docs: `http://localhost:8000/docs`
+### Execution
+*   **Backend**: `python run_fast.py` (Runs on port 8000).
+*   **Frontend**: `python run_streamlit.py` (Runs on port 8501).
+*   **Docs**: Interactive API documentation is available at `http://localhost:8000/docs`.
 
-*   **Frontend**:
-    ```bash
-    python run_streamlit.py
-    # OR
-    streamlit run streamlit_app/app.py
-    ```
-    *   Runs on: `http://localhost:8501`
-
-### Testing
-Tests are currently implemented as standalone Python scripts using `fastapi.testclient`.
-
-*   **Run a specific test suite**:
+### Testing & Verification
+*   **Run All Tests**: `pytest` (if configured) or run individual scripts:
     ```bash
     python tests/test_audit_manual.py
     ```
-    *   *Note*: Ensure `misc/sofa.jpg` exists for image audit tests.
+*   **Linting/Formatting**: Use `ruff` for fast linting and formatting:
+    ```bash
+    ruff check .    # Lint
+    ruff format .   # Format
+    ```
 
 ---
 
-## 3. Coding Standards & Guidelines
+## 3. Coding Standards & Style
 
-### General
-*   **Type Hinting**: **MANDATORY**. Use standard Python type hints (`List`, `Optional`, `Dict`) and Pydantic models for all data structures.
-*   **Formatting**: Adhere to PEP 8.
-*   **Docstrings**: Required for all complex Service methods and API endpoints. Explain *why*, not just *what*.
+### 3.1. General Principles
+*   **Type Hinting**: **STRICTLY MANDATORY**. Use `typing` module (`List`, `Dict`, `Optional`, `Any`) and Pydantic models.
+*   **Async First**: Use `async def` for all I/O-bound operations.
+    ```python
+    async def fetch_data(item_id: str) -> Optional[ItemSchema]:
+        # Implementation
+        pass
+    ```
+*   **Documentation**: Provide docstrings explaining the *intent* (the "why").
 
-### Backend (FastAPI)
-*   **Architecture**: Follow the pattern: `Router` -> `Service` -> `Repository` (optional).
-    *   **Routers** (`app/api/`): Handle HTTP parsing/validation only. Delegate logic to Services.
-    *   **Services** (`app/services/`): Pure python logic. Dependency Injection preferred.
-*   **Models**: Use `Pydantic` for `SchemaIn` (Requests) and `SchemaOut` (Responses).
-*   **Async**: Use `async def` for all endpoints and I/O-bound service methods.
-*   **Error Handling**: Raise `fastapi.HTTPException` with appropriate status codes (400, 404, 500) for client-facing errors.
+### 3.2. Import Conventions
+Follow this specific order, separated by a single newline:
+1.  **Standard Library** (alphabetical)
+2.  **Third-Party Libraries** (alphabetical)
+3.  **Local Application Modules** (alphabetical, absolute imports)
 
-### Frontend (Streamlit)
-*   **API Integration**: Use `requests` library wrapped in `try/except` blocks.
+Example:
+```python
+import asyncio
+import logging
+
+from fastapi import FastAPI
+import streamlit as st
+
+from app.core.config import settings
+from app.services.audit_service import AuditService
+```
+
+### 3.3. Naming Conventions
+*   **Classes**: `PascalCase` (e.g., `AuditService`, `MultiAgentOrchestrator`).
+*   **Functions/Variables**: `snake_case` (e.g., `run_audit_task`, `audit_id`).
+*   **Constants**: `UPPER_SNAKE_CASE` (e.g., `MAX_RETRIES`, `API_V1_STR`).
+*   **Pydantic Models**: `SchemaIn` for requests, `SchemaOut` for responses.
+
+### 3.4. Error Handling
+*   **API Layer**: Raise `fastapi.HTTPException`.
+*   **Service Layer**: Use `try/except` with granular exception catching.
     ```python
     try:
-        resp = requests.get(f"{settings.API_BASE_URL}/endpoint")
-        resp.raise_for_status()
+        result = await agent.process(request)
     except Exception as e:
-        st.error(f"API Error: {e}")
+        logger.error(f"Agent failed: {e}")
+        return ErrorResponse(status="failure", message=str(e))
     ```
-*   **State**: Use `st.session_state` for data persistence across reruns.
-*   **UX**: Provide feedback (`st.spinner`, `st.success`) for all async operations.
+
+### 3.5. Frontend (Streamlit) Specifics
+*   **API Wrapper**: Wrap `requests` calls in `try/except`.
+*   **UX**: Use `st.spinner` and `st.session_state`.
 
 ---
 
-## 4. Agent Protocols
-*   **Context Awareness**: Always check `Gemini.md` files in `app/` and `streamlit_app/` for component-specific rules before modifying them.
-*   **Skill Usage**: Refer to `.agent/skills/` for specific workflows like "Developing Backend App".
-*   **Documentation**: If you change the architectural pattern, you **must** update the relevant `Gemini.md` file.
+## 4. Agent Operational Protocols
+
+### 4.1. Contextual Awareness
+Before modifying code, check for local rules:
+*   `app/Gemini.md`: Rules specific to backend logic.
+*   `streamlit_app/Gemini.md`: Rules specific to the frontend UI.
+*   `.opencode/skills/`: Specialized skills for complex workflows.
+
+### 4.2. Workflow Automation & Maintenance
+*   **Documentation**: Every architectural change requires an update to the relevant `Gemini.md` and potentially `AGENTS.md`.
+*   **Skills**: Use the `docs-maintainer` skill in `.opencode/skills/docs-maintainer/` to ensure documentation parity.
+*   **Commit Style**: Follow the `git-commit-formatter` skill for standardized commit messages.
+
+### 4.3. Creating New Skills
+When adding new agentic workflows, create a new directory in `.opencode/skills/<skill-name>/` containing a `SKILL.md` file that defines the workflow steps and best practices. This ensures scalability of the agent's capabilities.

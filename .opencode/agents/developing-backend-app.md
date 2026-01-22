@@ -1,6 +1,7 @@
 ---
 name: developing-backend-app
-description: Specialized agent for developing, optimizing, and maintaining the FastAPI backend services. Focuses on high-performance, error-resilient code in the @[app] directory.
+description: Specialized agent for developing, optimizing, and maintaining the FastAPI backend services. Focuses on high-performance, error-resilient code in the app directory.
+compatibility: opencode
 ---
 
 # Developing Backend App

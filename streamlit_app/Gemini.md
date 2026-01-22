@@ -4,40 +4,31 @@
 
 The frontend is a multipage Streamlit application.
 
-- **Entry Point**: `streamlit_app/app.py`.
-- **Pages**: Additional tools and views reside in `streamlit_app/pages/`.
-- **Logic**: Keep UI code separate from backend API calls where possible.
+- **Main Entry**: `streamlit_app/app.py`
+- **Pages** (`streamlit_app/pages/`):
+    - `1_Health_Check.py`: API and system status monitoring.
+    - `2_Items_Explorer.py`: Visualization of processed items.
+    - `3_Multi_Agent_Auditor.py`: Core UI for triggering audits.
+    - `Chat.py`: LLM chat interface.
 
 ## 2. API Integration
 
-- **Communication**: All data should be fetched from the FastAPI backend. Avoid direct DB access from Streamlit.
-- **Configuration**: Use `API_BASE_URL` (default: `http://localhost:8000/api/v1`) for all requests.
-- **Error Handling**: Wrap `requests` calls in `try/except` blocks to handle connection errors gracefully.
-  ```python
-  try:
-      response = requests.get(f"{API_BASE_URL}/endpoint")
-      response.raise_for_status()
-      data = response.json()
-  except Exception as e:
-      st.error(f"Failed to fetch data: {e}")
-  ```
+- **Decoupling**: No direct backend logic or database access in the frontend. All data must come from the FastAPI backend.
+- **Requests**: Use `requests` with standard error handling.
+- **Configuration**: Load `API_BASE_URL` from the backend settings or environment.
 
-## 3. State Management
+## 3. UI/UX Guidelines
 
-- **Session State**: Use `st.session_state` to share variables between reruns and across pages.
-  - Initialize state variables at the top of the file if they don't exist.
+- **Feedback**: Use `st.spinner` for any operation taking > 0.5s.
+- **Status Icons**: Use standard Streamlit status components (`st.success`, `st.error`, `st.info`).
+- **Sidebar**: Use for global controls (e.g., LLM Provider selection).
 
-## 4. UI/UX Guidelines
+## 4. State Management
 
-- **Layout**: Use `st.columns`, `st.expander`, and `st.tabs` to organize dense information.
-- **Sidebar**: Use `st.sidebar` for navigation controls, global filters, and configuration (like LLM Provider selection).
-- **Feedback**: Provide immediate user feedback (e.g., `st.success`, `st.spinner` during API calls).
+- **Persistence**: Use `st.session_state` to keep user selections and results during the session.
+- **Initializers**: Always check if a key exists in `st.session_state` before accessing it.
 
-## 5. Caching
+## 5. Execution
 
-- **Performance**: Use `@st.cache_data` for expensive data fetching operations (e.g., loading large datasets).
-- **Resources**: Use `@st.cache_resource` for loading ML models or database connections if applicable (though strictly backend handling is preferred).
-
-## 6. Execution
-
-- **Running**: Use `python run_streamlit.py` or `streamlit run streamlit_app/app.py`.
+- **Standard Run**: `python run_streamlit.py`
+- **Streamlit CLI**: `streamlit run streamlit_app/app.py`
