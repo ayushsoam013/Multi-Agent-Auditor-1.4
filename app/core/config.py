@@ -22,6 +22,12 @@ class Settings(BaseSettings):
         "LITELLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite"
     )
 
+    # Bulk Audit Settings
+    BULK_AUDIT_INPUT_PATH: str = "misc/input_data.csv"
+    BULK_AUDIT_RESULTS_PATH: str = "misc/audit_results_final.csv"
+
+    BULK_AUDIT_TEMP_DIR: str = "temp_bulk_images"
+
     class Config:
         case_sensitive = True
 

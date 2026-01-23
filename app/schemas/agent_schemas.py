@@ -221,3 +221,42 @@ class MultiAgentAuditResult(BaseModel):
     master_agent: Optional[MasterAgentResponse] = None
     total_processing_time: float = 0.0
     total_cost: float = 0.0
+
+
+# --- Bulk Audit Schemas ---
+
+
+class BulkAuditTaskResult(BaseModel):
+    pc_item_id: str
+    status: str  # completed, failed
+    reference_outlier_api_raw_response: Optional[str] = None
+    photo_agent_response_json: Optional[str] = None
+    photo_agent_latency: float = 0.0
+    photo_agent_cost: float = 0.0
+    textual_agent_response_json: Optional[str] = None
+    textual_agent_latency: float = 0.0
+    textual_agent_cost: float = 0.0
+    rca_agent_response_json: Optional[str] = None
+    rca_agent_latency: float = 0.0
+    rca_agent_cost: float = 0.0
+    category_agent_response_json: Optional[str] = None
+    category_agent_latency: float = 0.0
+    category_agent_cost: float = 0.0
+    master_agent_response_json: Optional[str] = None
+    master_agent_latency: float = 0.0
+    master_agent_cost: float = 0.0
+    total_latency: float = 0.0
+    total_cost: float = 0.0
+    total_time_taken: float = 0.0
+    error_message: Optional[str] = None
+
+
+class BulkAuditSummary(BaseModel):
+    total_items: int
+    processed_items: int
+    completed_items: int
+    failed_items: int
+    total_cost: float
+    average_latency: float
+    success_rate: float
+    progress_percentage: float

@@ -9,3 +9,7 @@ pydantic-settings
 python-dotenv
 litellm
 pyngrok
+tqdm
+aiohttp
+aiofiles
+

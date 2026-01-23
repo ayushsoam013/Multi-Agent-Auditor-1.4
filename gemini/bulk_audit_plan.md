@@ -1,133 +1,66 @@
-# Detailed Plan for Bulk Auditing (10,000 Products)
+# Simplified Bulk Audit Plan
 
-## Executive Summary
-Performing a deep multi-agent audit on 10,000 products requires a robust, asynchronous architecture to handle long-running processes, potential API rate limits (Gemini/LiteLLM), and system resilience. This plan proposes a **Batch Processing System** backed by a lightweight SQLite database to manage state, ensure no data loss, and allow for resumable audits.
+This plan outlines a direct, CSV-based approach for auditing multiple products. It ensures data integrity by keeping the input separate from the results and supports resumption.
 
-## 1. Architecture Overview
+## 1. Core Workflow
 
-The system will transition from a synchronous "request-response" model to an asynchronous "job-queue" model for bulk operations.
+1.  **Input**: Read product information from `misc/input_data.csv`.
+2.  **Resumption Check**: Load `misc/audit_results.csv` (if it exists) to identify which `pc_item_id` values have already been audited.
+3.  **Processing**: Loop through records in `input_data.csv` that are NOT in `audit_results.csv`, up to an optional limit. **Processing must be STRICTLY SEQUENTIAL (one row at a time) to avoid overwhelming the backend and API rate limits.**
+4.  **Execution**: For each record, execute the Multi-Agent Audit. Use a library like `tqdm` to provide a progress bar in the terminal.
+5.  **Persistence**: Append the audit results to `misc/audit_results.csv` immediately after each audit.
+6.  **Rate Limiting**: Introduce a small delay (1-2 seconds) between sequential audits to ensure API stability.
+7.  **Monitoring**: The Streamlit dashboard reads the results CSV to display live progress and aggregate metrics.
 
-### Workflow:
-1.  **Client** uploads a CSV/JSON file containing product details (Title, Specs, Image URLs) via a new API endpoint.
-2.  **Server** parses the file, creates a `Batch` record, and inserts 10,000 `AuditTask` records into a local SQLite database.
-3.  **Server** returns a `batch_id` immediately.
-4.  **Background Worker** (running in a separate thread/process) polls the database for `pending` tasks.
-5.  **Worker** processes tasks with concurrency control (e.g., semaphore) to manage API rate limits.
-6.  **Results** are saved back to the SQLite database.
-7.  **Client** polls for progress or downloads the final report via a retrieval endpoint.
+## 2. CSV Data Structures
 
-## 2. Data Persistence (SQLite)
+### Input (`misc/input_data.csv`)
+*   `pc_item_id`: Unique identifier for the product.
+*   `product_title`: Name of the product (or `Product Name` in actual CSV).
+*   `product_specs`: Technical specifications (or `Specifications` in actual CSV).
+*   `image_url`: Link to the product image (or `img_url` in actual CSV).
 
-We will introduce a local `audit.db` (SQLite) to track the state of every single audit. This ensures that if the server crashes after processing 5,000 items, we can resume exactly where we left off.
+### Results (`misc/audit_results.csv`)
+*   `pc_item_id`: Unique identifier (links to input).
+*   `status`: `completed` or `failed`.
+*   `cost`: Individual cost of the audit (USD).
+*   `latency`: API response latency.
+*   `total_time_taken`: Total execution time for the record (seconds).
+*   `response_json`: Full JSON response from the multi-agent system.
+*   `error_message`: Details if the audit failed.
 
-### Schema Design
+## 3. Metrics Tracking
 
-**Table: `batches`**
-- `id` (UUID, PK): Unique batch identifier.
-- `filename` (Text): Name of the uploaded file.
-- `status` (Text): `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`.
-- `created_at` (Datetime)
-- `total_items` (Integer): Total records (e.g., 10,000).
-- `processed_count` (Integer): Live counter of finished tasks.
+Aggregate metrics will be calculated by scanning `misc/audit_results.csv`:
+*   **Total Cost**: Sum of `cost`.
+*   **Success Rate**: Percentage of records with `status=completed`.
+*   **Average Latency**: Average of the `latency` column.
+*   **Progress**: Count of unique `pc_item_id` in results vs. count in input.
 
-**Table: `audit_tasks`**
-- `id` (Integer, PK, Auto-increment)
-- `batch_id` (UUID, FK): Link to parent batch.
-- `input_data` (JSON): Stores `{product_title, product_specs, image_url, ...}`.
-- `status` (Text): `PENDING`, `IN_PROGRESS`, `SUCCESS`, `FAILED`.
-- `result` (JSON): Stores the full `MultiAgentAuditResult` or error details.
-- `attempts` (Integer): To track retries.
-- `updated_at` (Datetime)
+## 4. Implementation Steps
 
-## 3. API Design Changes
+### Backend (FastAPI)
+1.  **Endpoint**: `POST /api/v1/bulk-audit/run`
+2.  **Parameters**: `limit: int` (Optional, e.g., run only 5 rows).
+3.  **Logic**:
+    *   Load all IDs from `misc/audit_results.csv`.
+    *   Read `misc/input_data.csv` and filter out already processed IDs.
+    *   Apply `limit` if provided.
+    *   **Strictly Sequential Execution**:
+        *   Initialize `tqdm` progress bar for terminal visibility.
+        *   For each record:
+            *   Output progress to terminal: `Row X/Y | pc_item_id: [pc_item_id] | [Progress]%`.
+            *   Trigger `MultiAgentOrchestrator`.
+            *   Capture cost, latency, time, and full response.
+            *   Append a new row to `misc/audit_results.csv`.
+            *   **Delay**: Introduce a 1-2 second pause before the next iteration to prevent rate limiting.
 
-We need to add a new router `app/api/v1/endpoints/bulk_audit.py` with the following endpoints:
+### Frontend (Streamlit)
+1.  **Dashboard**: Add a "Bulk Audit" page.
+2.  **Display**:
+    *   Show current progress and metrics using `misc/audit_results.csv`.
+    *   Provide a "Start Bulk Audit" button that sends the `limit` to the backend.
 
-### 1. Upload Batch
-`POST /api/v1/bulk-audit/upload`
-- **Input**: CSV or JSON file.
-- **Action**: Parses file, populates DB, starts background worker.
-- **Output**: `{"batch_id": "...", "message": "Batch accepted. 10,000 tasks queued."}`
-
-### 2. Check Progress
-`GET /api/v1/bulk-audit/{batch_id}/status`
-- **Output**:
-  ```json
-  {
-    "batch_id": "...",
-    "status": "PROCESSING",
-    "progress": "45.2%",
-    "processed": 4520,
-    "total": 10000,
-    "failed": 12
-  }
-  ```
-
-### 3. Download Results
-`GET /api/v1/bulk-audit/{batch_id}/results`
-- **Query Param**: `format=json|csv`
-- **Action**: Streaming response of all completed audits for this batch.
-
-## 4. Implementation Details
-
-### A. Background Worker Logic
-We will use Python's `asyncio` with a `Semaphore` to control concurrency.
-
-```python
-MAX_CONCURRENT_AUDITS = 5  # Adjust based on LLM rate limits
-
-async def process_batch(batch_id: str):
-    tasks = db.get_pending_tasks(batch_id)
-    semaphore = asyncio.Semaphore(MAX_CONCURRENT_AUDITS)
-    
-    async def worker(task):
-        async with semaphore:
-            try:
-                # 1. Download image from URL (if needed)
-                # 2. Call orchestrator.run_audit(request)
-                # 3. Update task status to SUCCESS in DB
-            except Exception as e:
-                # Update task status to FAILED in DB
-                
-    await asyncio.gather(*[worker(task) for task in tasks])
-```
-
-### B. Handling Images
-For 10,000 items, we cannot upload images directly.
-- **Requirement**: The input CSV must contain `image_url`.
-- **Logic**: The worker must download the image to a temporary path, pass it to the `PhotoAgent`, and delete it immediately after processing to save disk space.
-
-### C. Rate Limiting & Retries
-- **Rate Limits**: If the LLM API returns a 429 (Too Many Requests), the worker should implement an exponential backoff strategy (sleep 2s, 4s, 8s...).
-- **Retries**: If a task fails due to a transient network error, increment `attempts` and reset status to `PENDING` (up to 3 times).
-
-## 5. Phase-by-Phase Rollout Plan
-
-### Phase 1: Foundation (Days 1-2)
-- Set up `sqlite3` connection and schema creation script.
-- Create `bulk_audit.py` router skeleton.
-- Implement the "Upload" endpoint to just parse CSV and save to DB (no processing yet).
-
-### Phase 2: The Worker (Days 3-4)
-- Implement the `process_batch` background function.
-- Integrate `MultiAgentOrchestrator`.
-- Add image downloading utility.
-- Test with a small batch (10 items).
-
-### Phase 3: Reliability (Day 5)
-- Add Global Exception Handlers.
-- Implement Retry logic.
-- Add "Pause/Resume" functionality (optional but recommended).
-
-## 6. Required Dependencies
-You may need to add these to `requirements.txt`:
-- `aiohttp`: For efficient async image downloading.
-- `aiosqlite`: For async SQLite interactions (prevents blocking the main API thread).
-- `pandas` (optional): For robust CSV parsing.
-
-## 7. Configuration
-Add these to `.env`:
-```
-MAX_CONCURRENT_AUDITS=5
-SQLITE_DB_PATH=./audit.db
-```
+## 5. Error Handling & Resumption
+*   **Resume**: The system automatically skips any `pc_item_id` found in `misc/audit_results.csv`.
+*   **Clean Slate**: To restart from scratch, simply delete or rename `misc/audit_results.csv`.
