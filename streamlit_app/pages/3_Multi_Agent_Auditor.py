@@ -1,11 +1,28 @@
+# Main interactive tool for running the Multi-Agent Audit.
+# Visualizes the pipeline execution in real-time, showing parallel and sequential steps.
 import streamlit as st
 import requests
 import json
 import time
+import sys
+import os
+
+# Add parent directory to path to allow importing shared modules
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from sidebar import render_sidebar
 
 API_BASE_URL = "http://localhost:8000/api/v1"
+USD_TO_INR = 92
+
+
+def format_inr(usd_amount):
+    return f"₹{usd_amount * USD_TO_INR:.4f}"
+
 
 st.set_page_config(page_title="Multi-Agent Auditor", page_icon="🤖", layout="wide")
+
+# Render common sidebar elements
+render_sidebar()
 
 # Custom CSS for glassmorphism and premium look
 st.markdown(
@@ -37,8 +54,8 @@ before a Master Agent makes the final decision.
 """)
 
 # --- Input Section ---
-with st.container():
-    st.subheader("📥 Product Information")
+st.subheader("📥 Product Information")
+with st.container(border=True):
     col1, col2 = st.columns([1, 2])
 
     with col1:
@@ -57,65 +74,59 @@ with st.container():
             placeholder="Enter key specs (e.g., Color: Red, Size: XL)...",
             height=200,
         )
+        submit_button = st.button(
+            "🚀 Run Multi-Agent Audit", use_container_width=True, type="primary"
+        )
 
-    submit_button = st.button(
-        "🚀 Run Multi-Agent Audit", use_container_width=True, type="primary"
-    )
+
+def get_usage_str(agent_result):
+    raw = agent_result.get("raw_output", {})
+    if isinstance(raw, dict) and "usage" in raw and raw["usage"]:
+        u = raw["usage"]
+        return f"\n[In: {u.get('prompt_tokens', 0)} | Out: {u.get('completion_tokens', 0)}]"
+    return ""
+
 
 # --- Execution Section ---
 if submit_button:
     if not uploaded_file or not product_title or not product_specs:
         st.error("Please provide all inputs (Photo, Title, and Specs) to proceed.")
     else:
-        # Progress states
-        st.divider()
-        st.subheader("⚡ Processing Flow")
-
-        # We start by showing the parallel agent columns
+        # Execution Phase Visualization
+        # Phase 1: Parallel Base Analysis (Independent Agents)
+        st.subheader("🕵️ Phase 1: Parallel Base Analysis")
         flow_col1, flow_col2, flow_col3 = st.columns(3)
-
         with flow_col1:
-            photo_status = st.empty()
-            photo_status.info("Photo Agent: Waiting...")
-
+            photo_card = st.empty()
+            photo_card.info("🔄 Photo Agent: Running...")
         with flow_col2:
-            title_status = st.empty()
-            title_status.info("Title Agent: Waiting...")
-
+            title_card = st.empty()
+            title_card.info("🔄 Title Agent: Running...")
         with flow_col3:
-            specs_status = st.empty()
-            specs_status.info("Specs Agent: Waiting...")
+            specs_card = st.empty()
+            specs_card.info("🔄 Specs Agent: Running...")
 
+        # Phase 2: Category & RCA (Dependent on Phase 1 results)
+        st.subheader("🔍 Phase 2: Category & RCA Verification")
         cat_rca_col1, cat_rca_col2 = st.columns(2)
         with cat_rca_col1:
-            category_status = st.empty()
-            category_status.info("Category Agent: Waiting...")
+            cat_card = st.empty()
+            cat_card.warning("⏳ Category Agent: Waiting for Phase 1...")
         with cat_rca_col2:
-            rca_status = st.empty()
-            rca_status.info("RCA Agent: Waiting...")
+            rca_card = st.empty()
+            rca_card.warning("⏳ RCA Agent: Waiting for Phase 2...")
 
-        master_status = st.status("Master Agent: Coordinating...", expanded=True)
+        # Phase 3: Master Decision (Final synthesis and decision grid lookup)
+        st.subheader("⚖️ Phase 3: Final Decision")
+        master_placeholder = st.empty()
+        master_placeholder.warning("⏳ Master Agent: Waiting for RCA...")
 
         # API Call
         try:
             # Prepare multipart form-data
-            # Re-read file content as bytes
             file_bytes = uploaded_file.getvalue()
             files = {"file": (uploaded_file.name, file_bytes, uploaded_file.type)}
             data = {"product_title": product_title, "product_specs": product_specs}
-
-            # Start timer
-            start_time = time.time()
-
-            # Update UI to "Processing"
-            photo_status.warning("Photo Agent: Running...")
-            title_status.warning("Title Agent: Running...")
-            specs_status.warning("Specs Agent: Running...")
-            category_status.warning("Category Agent: Pending...")
-            rca_status.warning("RCA Agent: Pending...")
-
-            # Simulating a slight delay for flow visualization if it's too fast
-            # time.sleep(1)
 
             response = requests.post(
                 f"{API_BASE_URL}/audit/multi-agent", data=data, files=files
@@ -124,69 +135,71 @@ if submit_button:
             if response.status_code == 200:
                 result = response.json()
                 total_time = result.get("total_processing_time", 0.0)
+                total_cost = result.get("total_cost", 0.0)
 
-                # Update Statuses
-                photo_status.success(
-                    f"Photo Agent: Done ({result['photo_agent']['processing_time']:.1f}s)"
-                )
-                title_status.success(
-                    f"Title Agent: Done ({result['title_agent']['processing_time']:.1f}s)"
-                )
-                specs_status.success(
-                    f"Specs Agent: Done ({result['specs_agent']['processing_time']:.1f}s)"
+                st.success(
+                    f"Audit Complete in {total_time:.2f}s | Total Cost: {format_inr(total_cost)}"
                 )
 
-                cat_res = result.get("category_agent")
-                if cat_res:
-                    category_status.success(
-                        f"Category Agent: Done ({cat_res['processing_time']:.1f}s)"
+                # Update Placeholders with Results
+                with photo_card.container():
+                    res = result["photo_agent"]
+                    st.info(
+                        f"Photo Agent: Done ({res['processing_time']:.1f}s | {format_inr(res.get('cost', 0))})"
+                        f"{get_usage_str(res)}"
                     )
-                else:
-                    category_status.info("Category Agent: Skipped (Outliers Found)")
-
-                rca_res = result.get("rca_agent")
-                if rca_res:
-                    rca_status.success(
-                        f"RCA Agent: Done ({rca_res['processing_time']:.1f}s)"
-                    )
-
-                # Show Agent Details
-                with flow_col1:
                     with st.expander("View Photo Analysis"):
-                        st.json(result["photo_agent"].get("raw_output", {}))
+                        st.json(res.get("raw_output", {}))
 
-                with flow_col2:
+                with title_card.container():
+                    res = result["title_agent"]
+                    st.info(
+                        f"Title Agent: Done ({res['processing_time']:.1f}s | {format_inr(res.get('cost', 0))})"
+                        f"{get_usage_str(res)}"
+                    )
                     with st.expander("View Title Analysis"):
-                        st.json(result["title_agent"].get("raw_output", {}))
+                        st.json(res.get("raw_output", {}))
 
-                with flow_col3:
+                with specs_card.container():
+                    res = result["specs_agent"]
+                    st.info(
+                        f"Specs Agent: Done ({res['processing_time']:.1f}s | {format_inr(res.get('cost', 0))})"
+                        f"{get_usage_str(res)}"
+                    )
                     with st.expander("View Specs Analysis"):
-                        st.json(result["specs_agent"].get("raw_output", {}))
+                        st.json(res.get("raw_output", {}))
 
-                with cat_rca_col1:
+                with cat_card.container():
+                    cat_res = result.get("category_agent")
                     if cat_res:
+                        st.info(
+                            f"Category Agent: Done ({cat_res['processing_time']:.1f}s | {format_inr(cat_res.get('cost', 0))})"
+                            f"{get_usage_str(cat_res)}"
+                        )
                         with st.expander("View Category Analysis"):
                             st.json(cat_res.get("raw_output", {}))
+                    else:
+                        st.info("Category Agent: Skipped")
 
-                with cat_rca_col2:
+                with rca_card.container():
+                    rca_res = result.get("rca_agent")
                     if rca_res:
+                        st.info(
+                            f"RCA Agent: Done ({rca_res['processing_time']:.1f}s | {format_inr(rca_res.get('cost', 0))})"
+                            f"{get_usage_str(rca_res)}"
+                        )
                         with st.expander("View RCA Raw Output"):
                             st.json(rca_res.get("raw_output", {}))
+                    else:
+                        st.info("RCA Agent: Skipped")
 
-                # Master Agent Result
-                master_status.update(
-                    label=f"Master Agent: Audit Complete in {total_time:.2f}s",
-                    state="complete",
-                    expanded=True,
-                )
-
-                with master_status:
+                # Master Agent Result Section
+                master_placeholder.empty()
+                with master_placeholder.container():
                     master_data = result["master_agent"]["raw_output"]
                     decision = result["master_agent"]["audit_decision"]
 
-                    st.markdown("---")
-
-                    # RCA Section
+                    # RCA Section if available
                     if rca_res and rca_res.get("analysis"):
                         rca_analysis = rca_res["analysis"]
                         st.markdown("### 🔍 Root Cause Analysis")
@@ -196,13 +209,31 @@ if submit_button:
 
                         issues = rca_analysis.get("identified_issues", [])
                         if issues:
-                            st.markdown("**Identified Issues:**")
                             import pandas as pd
 
                             df_issues = pd.DataFrame(issues)
-                            st.table(df_issues)
+                            # Use st.dataframe with column_config for better visibility and control
+                            st.dataframe(
+                                df_issues,
+                                column_config={
+                                    "severity": st.column_config.TextColumn(
+                                        "Severity", width="small"
+                                    ),
+                                    "issue_type": st.column_config.TextColumn(
+                                        "Issue Type", width="medium"
+                                    ),
+                                    "description": st.column_config.TextColumn(
+                                        "Description", width="large"
+                                    ),
+                                    "evidence": st.column_config.TextColumn(
+                                        "Evidence", width="large"
+                                    ),
+                                },
+                                use_container_width=True,
+                                hide_index=True,
+                            )
 
-                    st.markdown("---")
+                    st.divider()
                     col_res, col_score = st.columns(2)
 
                     with col_res:
@@ -213,7 +244,15 @@ if submit_button:
                             st.error(f"### FINAL DECISION: **{decision}**")
                         else:
                             st.warning(f"### FINAL DECISION: **{decision}**")
-                        st.caption(f"Decision Rule Code: {d_code}")
+
+                        # Show Master Agent Usage & Cost
+                        master_res = result["master_agent"]
+                        st.caption(
+                            f"Decision Rule Code: {d_code} | "
+                            f"Cost: {format_inr(master_res.get('cost', 0))} | "
+                            f"Time: {master_res.get('processing_time', 0):.1f}s"
+                            f"{get_usage_str(master_res)}"
+                        )
 
                     with col_score:
                         st.metric(
@@ -222,7 +261,6 @@ if submit_button:
                         )
 
                     st.markdown("#### 📝 Auditor Reasoning")
-                    # Reasons now come from master_agent result
                     for r in result["master_agent"].get("reasons", []):
                         st.markdown(f"- {r}")
 
@@ -231,7 +269,6 @@ if submit_button:
                         st.success(f"**💡 Seller Recommendation:** {recommendation}")
 
                     st.markdown("#### 🔍 Optimized Search Query")
-                    # Try to get from master_agent or title_agent
                     search_query = result["master_agent"].get(
                         "product_search_query"
                     ) or master_data.get("product_search_query", "N/A")
@@ -243,8 +280,6 @@ if submit_button:
 
             else:
                 st.error(f"Audit failed: {response.status_code} - {response.text}")
-                master_status.update(label="Master Agent: Error", state="error")
 
         except Exception as e:
             st.error(f"Connection Error: {e}")
-            master_status.update(label="Master Agent: Connection Failed", state="error")

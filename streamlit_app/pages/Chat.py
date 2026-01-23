@@ -1,16 +1,26 @@
+# Sandbox chat interface for testing different LLM providers (Gemini/LiteLLM).
+# Supports system prompt injection, model parameters tuning, and token usage tracking.
 import streamlit as st
 import requests
 import json
 import os
+import sys
+
+# Add parent directory to path to allow importing shared modules
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from sidebar import render_sidebar
 
 API_BASE_URL = "http://localhost:8000/api/v1"
 
 st.set_page_config(page_title="Chat", page_icon="💬", layout="wide")
 
+# Render common sidebar elements (Global Settings)
+render_sidebar()
+
 st.title("💬 Chat with AI Models")
 
 # --- Sidebar Configuration ---
-st.sidebar.header("Configuration")
+st.sidebar.header("Chat Configuration")
 
 # Provider Selection
 # Fetch current provider from backend to sync or just let user override for this session?
@@ -53,10 +63,14 @@ selected_model = st.sidebar.selectbox("Select Model", models)
 
 # Parameters
 temperature = st.sidebar.slider("Temperature", 0.0, 2.0, 0.7)
-max_tokens = st.sidebar.number_input("Max Output Tokens", min_value=1, max_value=32000, value=1000)
+max_tokens = st.sidebar.number_input(
+    "Max Output Tokens", min_value=1, max_value=32000, value=1000
+)
 
 # System Prompt
-system_prompt = st.sidebar.text_area("System Prompt", value="You are a helpful AI assistant.")
+system_prompt = st.sidebar.text_area(
+    "System Prompt", value="You are a helpful AI assistant."
+)
 
 # --- Chat Interface ---
 
@@ -83,14 +97,14 @@ if prompt := st.chat_input("What is up?"):
     # If system prompt is supported, it usually goes as first message or specific field.
     # For simplicity, we'll prepend it if it's the first turn or just send it as system role (if backend supports)
     # Our backend just passes messages to provider.
-    # Gemini supports "system_instruction" separately or just system message? 
+    # Gemini supports "system_instruction" separately or just system message?
     # Let's check `dtos.py` -> `ChatMessage`. It allows `role`.
     # We will prepend system prompt for every request or just maintain context?
     # Streamlit reruns script. We shouldn't duplicate system prompt.
     # We will construct the API payload messages from:
     # 1. System Prompt (as system role)
     # 2. Session messages
-    
+
     api_messages = [{"role": "system", "content": system_prompt}] + [
         {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
     ]
@@ -100,29 +114,33 @@ if prompt := st.chat_input("What is up?"):
         "model": selected_model,
         "provider": selected_provider,
         "temperature": temperature,
-        "max_tokens": max_tokens
+        "max_tokens": max_tokens,
     }
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             try:
-                response = requests.post(f"{API_BASE_URL}/chat/completions", json=payload)
+                response = requests.post(
+                    f"{API_BASE_URL}/chat/completions", json=payload
+                )
                 if response.status_code == 200:
                     data = response.json()
                     content = data["content"]
                     usage = data.get("usage")
-                    
+
                     st.markdown(content)
                     if usage:
                         with st.expander("Token Usage"):
                             st.json(usage)
-                    
+
                     # Add to history
-                    st.session_state.messages.append({
-                        "role": "model", # or assistant
-                        "content": content,
-                        "usage": usage
-                    })
+                    st.session_state.messages.append(
+                        {
+                            "role": "model",  # or assistant
+                            "content": content,
+                            "usage": usage,
+                        }
+                    )
                 else:
                     st.error(f"Error: {response.status_code} - {response.text}")
             except Exception as e:

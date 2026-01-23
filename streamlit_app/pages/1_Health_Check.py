@@ -1,11 +1,23 @@
+# Monitoring dashboard for system health.
+# Periodically pings backend endpoints to verify connectivity and API key status.
 import streamlit as st
 import requests
+import sys
+import os
+
+# Add parent directory to path to allow importing shared modules
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from sidebar import render_sidebar
 
 API_BASE_URL = "http://localhost:8000/api/v1"
 
 st.set_page_config(page_title="Health Check", page_icon="🏥")
 
+# Render common sidebar elements
+render_sidebar()
+
 st.title("🏥 Service Health Check")
+
 
 def check_health(endpoint):
     try:
@@ -16,6 +28,7 @@ def check_health(endpoint):
             return f"❌ Error {response.status_code}", response.json()
     except Exception as e:
         return "❌ Offline", str(e)
+
 
 col1, col2 = st.columns(2)
 
