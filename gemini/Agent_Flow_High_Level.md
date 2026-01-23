@@ -8,7 +8,7 @@ This document outlines the architectural workflow of the Multi-Agent Auditor sys
 
 ## 2. High-Level Workflow
 
-The system operates like a human audit team: verified specialists examine specific aspects of a product (Photo, Text, Category) sequentially, and a "Manager" (Master Agent) synthesizes their findings to make a final decision.
+The system operates like a human audit team: verified specialists examine specific aspects of a product (Photo, Text) sequentially, and a "Manager" (Master Agent) synthesizes their findings to make a final decision.
 
 ### System Flow Diagram
 
@@ -20,12 +20,10 @@ graph TD
         direction TB
         Orchestrator --> PhotoAgent[📸 Photo Specialist]
         PhotoAgent -->|Image Context| TextualAgent[📝 Text & Cross-Modal Specialist]
-        TextualAgent -->|Is Product Valid?| CategoryAgent{🏷️ Category Specialist}
+        TextualAgent -->|Is Product Valid?| RCA[🔍 Root Cause Analysis Agent]
     end
 
     subgraph "Phase 2: Decision & Governance"
-        CategoryAgent --> RCA[🔍 Root Cause Analysis Agent]
-        TextualAgent -->|If Outliers Detected| RCA
         RCA --> MasterAgent[🧠 Master Agent]
         
         DecisionGrid{⚡ Decision Grid} -.->|Rules| MasterAgent
@@ -37,9 +35,8 @@ graph TD
 
 1.  **Visual Analysis (PhotoAgent)**: Looks at the image quality, content, and extracts text (OCR).
 2.  **Textual & Cross-Modal Analysis (TextualAgent)**: Validates Title and Specs. Crucially, it checks for consistency between the text and the visual evidence provided by the Photo Agent.
-3.  **Category Verification (CategoryAgent)**: (Conditional) If no critical outliers are found in previous steps, this agent validates if the product is correctly categorized based on visual and textual evidence.
-4.  **Root Cause Analysis (RCAAgent)**: Aggregates all findings to pinpoint the exact nature and severity of any issues.
-5.  **Governance (MasterAgent)**: A deterministic "Rule Book" (Decision Grid) evaluates the RCA findings to issue a binding PASS/FAIL/REVIEW verdict.
+3.  **Root Cause Analysis (RCAAgent)**: Aggregates all findings to pinpoint the exact nature and severity of any issues.
+4.  **Governance (MasterAgent)**: A deterministic "Rule Book" (Decision Grid) evaluates the RCA findings to issue a binding PASS/FAIL/REVIEW verdict.
 
 ---
 
@@ -51,7 +48,7 @@ The system is built on a **"Plug-and-Play"** architecture. New agents can be ins
 
 1.  **Specialization**: Each agent uses a prompt optimized for its specific task (e.g., Vision for photos, Text analysis for specs).
 2.  **Context Awareness**: Downstream agents (like `TextualAgent`) benefit from the "eyes" of upstream agents (`PhotoAgent`).
-3.  **Cost Efficiency**: We can skip expensive steps (like Category verification) if the product is already flagged as a "Critical Fail" in earlier stages.
+3.  **Cost Efficiency**: We can skip expensive steps if the product is already flagged as a "Critical Fail" in earlier stages.
 
 ---
 
@@ -63,7 +60,6 @@ Breaking the task into agents allows us to use **Right-Sized Models**, optimizin
 | :----------------- | :-------------------------- | :-------------------------- | :----------------------- |
 | **Photo Agent**    | High (Visual Understanding) | **Gemini 1.5 Flash**        | Moderate (Visual tokens) |
 | **Textual Agent**  | High (Cross-Modal Logic)    | **Gemini 1.5 Flash**        | Low                      |
-| **Category Agent** | Medium (Aisle Alignment)    | **Gemini 1.5 Flash**        | Low                      |
 | **RCA Agent**      | Medium (Synthesis)          | **Gemini 1.5 Flash**        | Low                      |
 | **Master Agent**   | Low (Lookup + Formatting)   | **Gemini 1.5 Flash**        | Low                      |
 
