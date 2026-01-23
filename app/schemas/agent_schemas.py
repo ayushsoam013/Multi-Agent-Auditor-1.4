@@ -3,6 +3,11 @@ from typing import List, Optional, Dict, Any, Union
 
 
 class AgentRequest(BaseModel):
+    """
+    Standard request payload for all agents.
+    Includes both textual and visual data to support multi-modal analysis.
+    """
+
     product_title: Optional[str] = None
     product_specs: Optional[str] = None
     mcat_name: Optional[str] = None
@@ -12,10 +17,16 @@ class AgentRequest(BaseModel):
 
 
 class BaseAgentResponse(BaseModel):
+    """
+    Base schema for all agent responses.
+    Tracks metadata (time, cost, status) common to all agents.
+    """
+
     agent_name: str
     status: str = "success"  # success, failure
     error_message: Optional[str] = None
     processing_time: float = 0.0
+    cost: float = 0.0
     raw_output: Optional[Dict[str, Any]] = None
 
 
@@ -136,6 +147,11 @@ class MasterAgentResponse(BaseAgentResponse):
 
 
 class MultiAgentAuditResult(BaseModel):
+    """
+    Consolidated response containing results from all agents in the pipeline.
+    This serves as the final data contract for the Audit API.
+    """
+
     audit_id: str
     photo_agent: Optional[PhotoAgentResponse] = None
     title_agent: Optional[TitleAgentResponse] = None
@@ -144,3 +160,4 @@ class MultiAgentAuditResult(BaseModel):
     rca_agent: Optional[RCAAgentResponse] = None
     master_agent: Optional[MasterAgentResponse] = None
     total_processing_time: float = 0.0
+    total_cost: float = 0.0
