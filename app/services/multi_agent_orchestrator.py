@@ -25,7 +25,13 @@ logger = logging.getLogger(__name__)
 
 
 class MultiAgentOrchestrator:
+    """
+    Orchestrates the multi-agent auditing pipeline.
+    Manages agent dependencies, parallel execution, and result consolidation.
+    """
+
     def __init__(self):
+        # Initialize all specialized agents
         self.photo_agent = PhotoAgent()
         self.title_agent = TitleAgent()
         self.specs_agent = SpecsAgent()
@@ -34,6 +40,16 @@ class MultiAgentOrchestrator:
         self.master_agent = MasterAgent()
 
     async def run_audit(self, request: AgentRequest) -> MultiAgentAuditResult:
+        """
+        Executes the full audit pipeline for a given product request.
+
+        PIPELINE FLOW:
+        1. Parallel Phase: Run Photo, Title, and Specs agents simultaneously to minimize latency.
+        2. Conditional Phase: Run Category Agent only if no major 'outliers' (fatal flaws)
+           were detected in Phase 1.
+        3. Synthesis Phase: Run RCA Agent to perform cross-modal analysis on all previous results.
+        4. Decision Phase: Run Master Agent to apply the final Decision Grid/Truth Table.
+        """
         audit_id = f"audit_{int(time.time())}_{uuid.uuid4().hex[:6]}"
         start_time = time.time()
 
@@ -42,7 +58,7 @@ class MultiAgentOrchestrator:
         if request.context is None:
             request.context = {}
 
-        # 1. Parallel Execution of Base Agents
+        # 1. Parallel Execution of Base Agents (I/O Bound)
         results_list = await asyncio.gather(
             self.photo_agent.process(request),
             self.title_agent.process(request),
@@ -118,7 +134,19 @@ class MultiAgentOrchestrator:
             master_res = self._error_response("MasterAgent", e, MasterAgentResponse)
 
         total_time = time.time() - start_time
-        logger.info(f"Audit {audit_id} completed in {total_time:.2f}s")
+
+        total_cost = (
+            photo_res.cost
+            + title_res.cost
+            + specs_res.cost
+            + (category_res.cost if category_res else 0.0)
+            + rca_res.cost
+            + master_res.cost
+        )
+
+        logger.info(
+            f"Audit {audit_id} completed in {total_time:.2f}s with cost ${total_cost:.6f}"
+        )
 
         return MultiAgentAuditResult(
             audit_id=audit_id,
@@ -129,6 +157,7 @@ class MultiAgentOrchestrator:
             rca_agent=rca_res,
             master_agent=master_res,
             total_processing_time=total_time,
+            total_cost=total_cost,
         )
 
     def _has_outliers(
