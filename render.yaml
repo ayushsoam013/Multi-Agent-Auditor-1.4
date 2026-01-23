@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: multi-agent-auditor
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: ./start.sh
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: API_BASE_URL
+        value: http://localhost:8000/api/v1
+    plan: free

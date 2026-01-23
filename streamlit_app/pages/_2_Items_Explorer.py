@@ -1,8 +1,10 @@
 import streamlit as st
 import requests
 import pandas as pd
+import os
 
-API_BASE_URL = "http://localhost:8000/api/v1"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1")
+
 
 st.set_page_config(page_title="Items Explorer", page_icon="🔍", layout="wide")
 
@@ -18,14 +20,14 @@ if st.button("Fetch Items"):
                 "collection_name": collection_name,
                 "limit": limit,
                 "with_payload": True,
-                "with_vectors": False
+                "with_vectors": False,
             }
             response = requests.get(f"{API_BASE_URL}/items/", params=params)
-            
+
             if response.status_code == 200:
                 data = response.json()
                 items = data.get("items", [])
-                
+
                 if items:
                     # Flatten the structure for pandas
                     flattened_data = []
@@ -33,14 +35,16 @@ if st.button("Fetch Items"):
                         row = {"id": item["id"]}
                         row.update(item["payload"])
                         flattened_data.append(row)
-                    
+
                     df = pd.DataFrame(flattened_data)
                     st.success(f"Found {len(items)} items.")
                     st.dataframe(df, use_container_width=True)
                 else:
                     st.warning("No items found in this collection.")
             else:
-                st.error(f"Failed to fetch data: {response.status_code} - {response.text}")
-                
+                st.error(
+                    f"Failed to fetch data: {response.status_code} - {response.text}"
+                )
+
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")

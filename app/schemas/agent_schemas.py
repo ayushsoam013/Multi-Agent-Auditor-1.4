@@ -146,6 +146,23 @@ class MasterAgentResponse(BaseAgentResponse):
     reasons: List[str] = []
 
 
+# Deployment Agent Specific Schemas
+class DeploymentCheck(BaseModel):
+    check_name: str
+    status: str  # PASS, FAIL
+    details: str
+
+
+class DeploymentAnalysisResult(BaseModel):
+    checks: List[DeploymentCheck] = []
+    overall_status: str  # READY, NOT_READY
+    recommendations: List[str] = []
+
+
+class DeploymentAgentResponse(BaseAgentResponse):
+    analysis: Optional[DeploymentAnalysisResult] = None
+
+
 class MultiAgentAuditResult(BaseModel):
     """
     Consolidated response containing results from all agents in the pipeline.
