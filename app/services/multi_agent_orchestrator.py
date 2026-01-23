@@ -12,13 +12,14 @@ from app.schemas.agent_schemas import (
     RCAAgentResponse,
     MasterAgentResponse,
     BaseAgentResponse,
+    CodeReviewAgentResponse,
 )
 from app.services.agents.photo_agent import PhotoAgent
 from app.services.agents.textual_agent import TextualAgent
-
-# from app.services.agents.category_agent import CategoryAgent
+from app.services.agents.category_agent import CategoryAgent
 from app.services.agents.rca_agent import RCAAgent
 from app.services.agents.master_agent import MasterAgent
+from app.services.agents.code_review_agent import CodeReviewAgent
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,10 @@ class MultiAgentOrchestrator:
         # Initialize all specialized agents
         self.photo_agent = PhotoAgent()
         self.textual_agent = TextualAgent()
-        # self.category_agent = CategoryAgent()
+        self.category_agent = CategoryAgent()
         self.rca_agent = RCAAgent()
         self.master_agent = MasterAgent()
+        self.code_review_agent = CodeReviewAgent()
 
     async def run_audit(self, request: AgentRequest) -> MultiAgentAuditResult:
         """
@@ -151,6 +153,20 @@ class MultiAgentOrchestrator:
             total_processing_time=total_time,
             total_cost=total_cost,
         )
+
+    async def run_code_review(self, request: AgentRequest) -> CodeReviewAgentResponse:
+        """
+        Executes the code review agent.
+        """
+        try:
+            output = await self.code_review_agent.process(request)
+            return cast(CodeReviewAgentResponse, output)
+        except Exception as e:
+            # We need to cast to Any to avoid type checking issues with _error_response return type
+            return cast(
+                CodeReviewAgentResponse,
+                self._error_response("CodeReviewAgent", e, CodeReviewAgentResponse),
+            )
 
     def _has_outliers(
         self,

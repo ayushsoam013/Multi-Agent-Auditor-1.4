@@ -109,16 +109,10 @@ if submit_button:
             textual_card = st.empty()
             textual_card.warning("⏳ Textual Agent: Waiting for Photo...")
 
-        # Phase 2: Category & RCA Verification (Dependent on Phase 1 results)
-        st.subheader("🔍 Phase 2: Category & RCA Verification")
-        cat_rca_col1, cat_rca_col2 = st.columns(2)
-        with cat_rca_col1:
-            cat_card = st.empty()
-            # cat_card.warning("⏳ Category Agent: Waiting for Phase 1...")
-            cat_card.info("Category Agent: Disabled")
-        with cat_rca_col2:
-            rca_card = st.empty()
-            rca_card.warning("⏳ RCA Agent: Waiting for Phase 2...")
+        # Phase 2: RCA Verification (Dependent on Phase 1 results)
+        st.subheader("🔍 Phase 2: RCA Verification")
+        rca_card = st.empty()
+        rca_card.warning("⏳ RCA Agent: Waiting for Phase 1...")
 
         # Phase 3: Master Decision (Final synthesis and decision grid lookup)
         st.subheader("⚖️ Phase 3: Final Decision")
@@ -167,18 +161,6 @@ if submit_button:
                     )
                     with st.expander("View Textual Analysis"):
                         st.json(res.get("raw_output", {}))
-
-                # with cat_card.container():
-                #     cat_res = result.get("category_agent")
-                #     if cat_res:
-                #         st.info(
-                #             f"Category Agent: Done ({cat_res['processing_time']:.1f}s | {format_inr(cat_res.get('cost', 0))})"
-                #             f"{get_usage_str(cat_res)}"
-                #         )
-                #         with st.expander("View Category Analysis"):
-                #             st.json(cat_res.get("raw_output", {}))
-                #     else:
-                #         st.info("Category Agent: Skipped")
 
                 with rca_card.container():
                     rca_res = result.get("rca_agent")
