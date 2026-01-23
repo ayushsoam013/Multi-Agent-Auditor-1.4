@@ -20,23 +20,22 @@ graph TD
         direction TB
         Orchestrator --> PhotoAgent[📸 Photo Specialist]
         PhotoAgent -->|Image Context| TextualAgent[📝 Text & Cross-Modal Specialist]
-        TextualAgent -->|Is Product Valid?| RCA[🔍 Root Cause Analysis Agent]
     end
 
-    subgraph "Phase 2: Decision & Governance"
-        RCA --> MasterAgent[🧠 Master Agent]
-        
-        DecisionGrid{⚡ Decision Grid} -.->|Rules| MasterAgent
-        MasterAgent -->|Final Verdict & Recommendation| Output([Final Audit Report])
+    subgraph MasterAgent [🧠 Master Agent: Decision & Governance]
+        direction TB
+        RCA[🔍 RCA Agent] --> Grid{⚡ Decision Grid}
     end
+
+    TextualAgent -->|Is Product Valid?| MasterAgent
+    MasterAgent -->|Final Verdict| Output([Final Audit Report])
 ```
 
 ### Key Stages
 
 1.  **Visual Analysis (PhotoAgent)**: Looks at the image quality, content, and extracts text (OCR).
 2.  **Textual & Cross-Modal Analysis (TextualAgent)**: Validates Title and Specs. Crucially, it checks for consistency between the text and the visual evidence provided by the Photo Agent.
-3.  **Root Cause Analysis (RCAAgent)**: Aggregates all findings to pinpoint the exact nature and severity of any issues.
-4.  **Governance (MasterAgent)**: A deterministic "Rule Book" (Decision Grid) evaluates the RCA findings to issue a binding PASS/FAIL/REVIEW verdict.
+3.  **Decision & Governance (MasterAgent)**: The final decision-maker. It incorporates the **Root Cause Analysis (RCA Agent)** to synthesize findings and the **Decision Grid** (deterministic rules) to issue a binding PASS/FAIL/REVIEW verdict.
 
 ---
 
