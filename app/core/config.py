@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # LiteLLM default models (without litellm_proxy/ prefix - will be added in service layer)
     LITELLM_DEFAULT_MODEL: str = os.getenv(
-        "LITELLM_DEFAULT_MODEL", "google/gemini-2.5-flash"
+        "LITELLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite"
     )
 
     class Config:
