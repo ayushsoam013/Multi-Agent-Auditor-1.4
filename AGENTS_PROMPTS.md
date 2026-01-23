@@ -4,25 +4,35 @@ This document provides a detailed overview of the agents involved in the Multi-A
 
 ## 1. Orchestration Overview
 
-The audit process is managed by the `MultiAgentOrchestrator` (`app/services/multi_agent_orchestrator.py`). It follows a phased execution model to optimize speed and cost while ensuring logical consistency.
+The audit process is managed by the `MultiAgentOrchestrator` (`app/services/multi_agent_orchestrator.py`). It follows a sequential and conditional execution model to ensure logical consistency and efficiency.
 
 ### Execution Flow & Dependencies
 
-1.  **Phase 1: Parallel Base Analysis**
-    *   **Agents**: `PhotoAgent`, `TitleAgent`, `SpecsAgent`.
-    *   **Logic**: These agents run in parallel as they primarily analyze the input data (image, title, specs) independently.
-2.  **Phase 2: Conditional Category Verification**
-    *   **Agent**: `CategoryAgent`.
-    *   **Dependency**: Phase 1 results.
-    *   **Condition**: Runs only if no major outliers are detected in Phase 1.
-    *   **Context**: Injects `PhotoAgent` visual analysis and OCR results.
-3.  **Phase 3: Root Cause Analysis (RCA)**
-    *   **Agent**: `RCAAgent`.
-    *   **Dependency**: All previous agent results (`Photo`, `Title`, `Specs`, and `Category` if available).
-4.  **Phase 4: Final Decision & Recommendations**
-    *   **Agent**: `MasterAgent`.
+1.  **Step 1: Visual Analysis**
+    *   **Agent**: `PhotoAgent`
+    *   **Logic**: Analyzes the product image for visual attributes, OCR text, photo specifications, and quality issues.
+    *   **Output**: Used by `TextualAgent`, `CategoryAgent`, and `RCAAgent`.
+
+2.  **Step 2: Textual & Cross-Modal Analysis**
+    *   **Agent**: `TextualAgent`
+    *   **Dependency**: `PhotoAgent` results.
+    *   **Logic**: Audits Title and Specifications for internal quality. Performs cross-modal consistency checks (e.g., Title vs. Photo, Specs vs. Photo).
+
+3.  **Step 3: Conditional Category Verification**
+    *   **Agent**: `CategoryAgent`
+    *   **Dependency**: `PhotoAgent` and `TextualAgent` results.
+    *   **Condition**: Runs only if **NO** major outliers are detected in the Photo or Textual phases.
+    *   **Logic**: Validates if the product belongs to the assigned category using visual and textual clues.
+
+4.  **Step 4: Root Cause Analysis (RCA)**
+    *   **Agent**: `RCAAgent`
+    *   **Dependency**: All previous agent results (`Photo`, `Textual`, and `Category` if available).
+    *   **Logic**: Synthesizes all findings to identify the root cause of issues and assigns severity.
+
+5.  **Step 5: Final Decision & Recommendations**
+    *   **Agent**: `MasterAgent`
     *   **Dependency**: `RCAAgent` results.
-    *   **Logic**: Maps RCA findings to a 32-row decision grid (Truth Table) and generates a seller-facing recommendation.
+    *   **Logic**: Maps RCA findings to a Decision Grid (Truth Table) to determine the verdict (PASS/FAIL/REVIEW) and generates a seller-facing recommendation.
 
 ---
 
@@ -75,84 +85,120 @@ Return the results in this strict JSON format:
 }
 ```
 
-### 2.2. TitleAgent
-*   **Purpose**: Assesses the product title for spelling, duplicates, and internal contradictions. Identifies brands/features and constructs a search query.
+### 2.2. TextualAgent
+*   **Purpose**: Audits product textual information (Title, Specs) and checks consistency with Photo and Category. Combines functionalities of previous Title and Specs agents.
 *   **Model**: `gemini-1.5-flash`
 *   **Prompt**:
 ```text
 Product Title: {request.product_title}
 Product Specifications: {request.product_specs}
 Category Name: {request.mcat_name}
+Photo Agent Output (Textual Only):
+{photo_output_str}
+
 
 Instructions:
 
 Task 1: 
- Product Title Assessment: Evaluate the Product Title text in isolation: 
-    a) Spell Error
-    b) Duplicate words in Product Title
-    c) Contradiction in Product Title (Conflict within the Title text itself)
+ Product Title Assessment (Internal Only) : Evaluate the Product Title text in isolation: 
+	a) Spell Error
+b) Duplicate words in Product Title
+c) Contradiction in Product Title 
+(Conflict within the Title text itself)
 
-Task 2:
- Identify well-known brands, models, or recognizable features from the Product Title and Specifications.
+  Task 2: 
+ Product Specifications Assessment (Internal Only):  Evaluate the Product Specifications text in isolation: 
+a) Spell Error 
+b) Duplicate Specifications 
+c) Internal Contradiction 
+(Conflict within the Specifications text itself)
+
+  Task 3:
+ Identify well-known brands, models, or recognizable features from:
+- Primary Object
+- OCR text from Input
+- Product Title
+- Product Specifications
+- Photo Specifications
  Give 1 line reason for why Popular for each entity identified as popular.
 
-Task 3:
- Query Construction: Combine the entities from Task 2 into a relevant search query. Let's call it a Product Search Query.
+  Task 4:
+    Query Construction: Combine the entities from Task 3  into a relevant search query. Let's call it a Product Search Query.
 
-Task 4:
- Category Alignment Check: Analyze if the Product Title aligns with the provided Category Name.
+  Task 5: 
+    Identify if there is contradiction in:
+Analyze each pair independently. An "outlier" here requires a mismatch between the two listed sources. If the sources agree on the core fact, it is "not outlier," even if one source is poorly formatted or has internal errors.
+      a) Primary Object of Product Photo- Title
+      b) Primary Object of Product Photo - Product Specifications
+      c) Product Title - Product Specifications 
+      d) Within the Product Search Query
+     e) Photo Description ↔ Product Title
+     f) Photo Specifications ↔ Product Specifications
 
-Return all output in JSON format matching this schema:
+    Task 6:
+Category Analysis: Analyze the Category : "Category Name"  and identify the type of products it represents.
+Only flag as "outlier" if the entity does not belong in the category. Ignore spelling/formatting errors in the entities. Use the Category understanding from above to identify if there is a contradiction in:
+      a) Primary Object ↔ Category
+      b) Photo Description ↔ Category
+      c) Product Search Query - Category Name
+      d) Product title - Category Name
+
+  Task 7:
+Core Alignment Check : Verify if the product's primary function and operating mechanism match the category's fundamental definition. Flag as outlier if:
+Mechanism Mismatch: The product operates differently than the category implies (e.g., manual vs. electric, stovetop vs. automatic).
+Entity Mismatch: The product is a toy, model, accessory, or spare part, while the category represents the functional standalone item.
+Visual Mimicry: The product is designed to look like the category item but lacks its core utility (e.g., a camera-shaped lighter).
+
+Give all output in JSON format.
+Give response for task and subtasks of task 1,  task 2, task 5, task 6 and task 7 as outlier / not outlier / can't say for each subtask. Give one reason for each subtask of task 1,  task 2, task 5, task 6 and task 7.
+
+
 {
   "task_1": {
-    "spell_error": { "status": "outlier/not_outlier/can't_say", "reason": "" },
-    "duplicate_words": { "status": "outlier/not_outlier/can't_say", "reason": "" },
-    "internal_contradiction": { "status": "outlier/not_outlier/can't_say", "reason": "" }
+    "spell_error": { "status": "", "reason": "" },
+    "duplicate_words": { "status": "", "reason": "" },
+    "internal_contradiction": { "status": "", "reason": "" }
   },
   "task_2": {
+    "spell_error": { "status": "", "reason": "" },
+    "duplicate_specifications": { "status": "", "reason": "" },
+    "internal_contradiction": { "status": "", "reason": "" }
+  },
+  "task_3": {
     "identified_entities": [
       {
         "entity": "",
-        "source": "title/specs",
+        "source": "",
         "why_popular": ""
       }
     ]
   },
-  "task_3": {
+  "task_4": {
     "product_search_query": ""
   },
-  "task_4": {
-    "title_category_alignment": { "status": "outlier/not_outlier/can't_say", "reason": "" }
+  "task_5": {
+    "photo_title": { "status": "", "reason": "" },
+    "photo_specs": { "status": "", "reason": "" },
+    "title_specs": { "status": "", "reason": "" },
+    "query_internal": { "status": "", "reason": "" },
+    "photo_description_title": { "status": "", "reason": "" },
+    "photo_specs_specs": { "status": "", "reason": "" }
+  },
+  "task_6": {
+    "primary_object_category": { "status": "", "reason": "" },
+    "photo_description_category": { "status": "", "reason": "" },
+    "query_category": { "status": "", "reason": "" },
+    "title_category": { "status": "", "reason": "" }
+  },
+  "task_7": {
+    "mechanism_mismatch": { "status": "", "reason": "" },
+    "entity_mismatch": { "status": "", "reason": "" },
+    "visual_mimicry": { "status": "", "reason": "" }
   }
 }
 ```
 
-### 2.3. SpecsAgent
-*   **Purpose**: Checks specifications for errors, duplicates, and contradictions with the title.
-*   **Model**: `gemini-1.5-flash`
-*   **Prompt**:
-```text
-Analyze the following product specifications:
-"{request.product_specs}"
-
-Cross-reference with Product Title if provided: "{request.product_title}"
-
-Tasks:
-1. Spell Check: Identify any spelling errors in the specs.
-2. Duplicate Specs: Detect repeated or redundant specification entries.
-3. Contradictions: Check for internal contradictions or contradictions with the title.
-4. Spec Extraction: Extract key-value pairs of specifications.
-
-Return the results in this strict JSON format:
-{
-  "spell_errors": ["string"],
-  "duplicate_specs": ["string"],
-  "contradictions": ["string"],
-  "extracted_specs": {"key": "value"}
-}
-```
-
-### 2.4. CategoryAgent
+### 2.3. CategoryAgent
 *   **Purpose**: Validates if the current category is correct and suggests alternatives based on title, specs, and visual analysis.
 *   **Model**: `gemini-1.5-flash`
 *   **Prompt**:
@@ -181,7 +227,7 @@ Return the results in this strict JSON format:
 }
 ```
 
-### 2.5. RCAAgent
+### 2.4. RCAAgent
 *   **Purpose**: Synthesizes all agent findings to identify root causes and assign severity.
 *   **Model**: `gemini-1.5-flash`
 *   **Prompt**:
@@ -215,7 +261,7 @@ Return the results in this strict JSON format:
 }
 ```
 
-### 2.6. MasterAgent
+### 2.5. MasterAgent
 *   **Purpose**: The final decision maker. It maps RCA issues to 5 binary flags to look up a decision in a truth table and generates a polite recommendation.
 *   **Model**: `gemini-1.5-flash`
 *   **Primary Logic**: Decision Grid (32-row truth table loaded from `config/decision_grid.json`).

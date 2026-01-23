@@ -49,9 +49,10 @@ st.markdown(
 st.title("🤖 Multi-Agent Auditor System")
 st.markdown("""
 This system leverages a **Multi-Agent Architecture** to audit product listings. 
-Different specialized agents analyze the photo, title, and specifications in parallel 
-before a Master Agent makes the final decision.
+Different specialized agents analyze the photo and textual information (title, specs) 
+sequentially before a Master Agent makes the final decision.
 """)
+
 
 # --- Input Section ---
 st.subheader("📥 Product Information")
@@ -68,6 +69,9 @@ with st.container(border=True):
     with col2:
         product_title = st.text_input(
             "Product Title", placeholder="Enter official product name..."
+        )
+        mcat_name = st.text_input(
+            "Category Name", placeholder="Enter product category..."
         )
         product_specs = st.text_area(
             "Product Specifications",
@@ -89,24 +93,23 @@ def get_usage_str(agent_result):
 
 # --- Execution Section ---
 if submit_button:
-    if not uploaded_file or not product_title or not product_specs:
-        st.error("Please provide all inputs (Photo, Title, and Specs) to proceed.")
+    if not uploaded_file or not product_title or not mcat_name or not product_specs:
+        st.error(
+            "Please provide all inputs (Photo, Title, Category Name, and Specs) to proceed."
+        )
     else:
         # Execution Phase Visualization
-        # Phase 1: Parallel Base Analysis (Independent Agents)
-        st.subheader("🕵️ Phase 1: Parallel Base Analysis")
-        flow_col1, flow_col2, flow_col3 = st.columns(3)
+        # Phase 1: Base Analysis (Sequential)
+        st.subheader("🕵️ Phase 1: Base Analysis")
+        flow_col1, flow_col2 = st.columns(2)
         with flow_col1:
             photo_card = st.empty()
             photo_card.info("🔄 Photo Agent: Running...")
         with flow_col2:
-            title_card = st.empty()
-            title_card.info("🔄 Title Agent: Running...")
-        with flow_col3:
-            specs_card = st.empty()
-            specs_card.info("🔄 Specs Agent: Running...")
+            textual_card = st.empty()
+            textual_card.warning("⏳ Textual Agent: Waiting for Photo...")
 
-        # Phase 2: Category & RCA (Dependent on Phase 1 results)
+        # Phase 2: Category & RCA Verification (Dependent on Phase 1 results)
         st.subheader("🔍 Phase 2: Category & RCA Verification")
         cat_rca_col1, cat_rca_col2 = st.columns(2)
         with cat_rca_col1:
@@ -126,7 +129,11 @@ if submit_button:
             # Prepare multipart form-data
             file_bytes = uploaded_file.getvalue()
             files = {"file": (uploaded_file.name, file_bytes, uploaded_file.type)}
-            data = {"product_title": product_title, "product_specs": product_specs}
+            data = {
+                "product_title": product_title,
+                "mcat_name": mcat_name,
+                "product_specs": product_specs,
+            }
 
             response = requests.post(
                 f"{API_BASE_URL}/audit/multi-agent", data=data, files=files
@@ -151,22 +158,13 @@ if submit_button:
                     with st.expander("View Photo Analysis"):
                         st.json(res.get("raw_output", {}))
 
-                with title_card.container():
-                    res = result["title_agent"]
+                with textual_card.container():
+                    res = result["textual_agent"]
                     st.info(
-                        f"Title Agent: Done ({res['processing_time']:.1f}s | {format_inr(res.get('cost', 0))})"
+                        f"Textual Agent: Done ({res['processing_time']:.1f}s | {format_inr(res.get('cost', 0))})"
                         f"{get_usage_str(res)}"
                     )
-                    with st.expander("View Title Analysis"):
-                        st.json(res.get("raw_output", {}))
-
-                with specs_card.container():
-                    res = result["specs_agent"]
-                    st.info(
-                        f"Specs Agent: Done ({res['processing_time']:.1f}s | {format_inr(res.get('cost', 0))})"
-                        f"{get_usage_str(res)}"
-                    )
-                    with st.expander("View Specs Analysis"):
+                    with st.expander("View Textual Analysis"):
                         st.json(res.get("raw_output", {}))
 
                 with cat_card.container():
