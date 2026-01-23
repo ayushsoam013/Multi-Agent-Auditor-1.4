@@ -206,12 +206,14 @@ if submit_button:
                     col_res, col_score = st.columns(2)
 
                     with col_res:
+                        d_code = result["master_agent"].get("decision_code", "N/A")
                         if decision == "PASS":
                             st.success(f"### FINAL DECISION: **{decision}**")
                         elif decision == "FAIL":
                             st.error(f"### FINAL DECISION: **{decision}**")
                         else:
                             st.warning(f"### FINAL DECISION: **{decision}**")
+                        st.caption(f"Decision Rule Code: {d_code}")
 
                     with col_score:
                         st.metric(
@@ -223,6 +225,10 @@ if submit_button:
                     # Reasons now come from master_agent result
                     for r in result["master_agent"].get("reasons", []):
                         st.markdown(f"- {r}")
+
+                    recommendation = result["master_agent"].get("seller_recommendation")
+                    if recommendation:
+                        st.success(f"**💡 Seller Recommendation:** {recommendation}")
 
                     st.markdown("#### 🔍 Optimized Search Query")
                     # Try to get from master_agent or title_agent
