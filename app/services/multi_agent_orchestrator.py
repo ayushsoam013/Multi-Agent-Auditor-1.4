@@ -7,16 +7,14 @@ from app.schemas.agent_schemas import (
     AgentRequest,
     MultiAgentAuditResult,
     PhotoAgentResponse,
-    TitleAgentResponse,
-    SpecsAgentResponse,
+    TextualAgentResponse,
     CategoryAgentResponse,
     RCAAgentResponse,
     MasterAgentResponse,
     BaseAgentResponse,
 )
 from app.services.agents.photo_agent import PhotoAgent
-from app.services.agents.title_agent import TitleAgent
-from app.services.agents.specs_agent import SpecsAgent
+from app.services.agents.textual_agent import TextualAgent
 from app.services.agents.category_agent import CategoryAgent
 from app.services.agents.rca_agent import RCAAgent
 from app.services.agents.master_agent import MasterAgent
@@ -33,8 +31,7 @@ class MultiAgentOrchestrator:
     def __init__(self):
         # Initialize all specialized agents
         self.photo_agent = PhotoAgent()
-        self.title_agent = TitleAgent()
-        self.specs_agent = SpecsAgent()
+        self.textual_agent = TextualAgent()
         self.category_agent = CategoryAgent()
         self.rca_agent = RCAAgent()
         self.master_agent = MasterAgent()
@@ -44,11 +41,10 @@ class MultiAgentOrchestrator:
         Executes the full audit pipeline for a given product request.
 
         PIPELINE FLOW:
-        1. Parallel Phase: Run Photo, Title, and Specs agents simultaneously to minimize latency.
-        2. Conditional Phase: Run Category Agent only if no major 'outliers' (fatal flaws)
-           were detected in Phase 1.
-        3. Synthesis Phase: Run RCA Agent to perform cross-modal analysis on all previous results.
-        4. Decision Phase: Run Master Agent to apply the final Decision Grid/Truth Table.
+        1. Parallel Phase: Run Photo and Textual agents simultaneously.
+        2. Conditional Phase: Run Category Agent only if no major 'outliers' detected.
+        3. Synthesis Phase: Run RCA Agent to perform cross-modal analysis.
+        4. Decision Phase: Run Master Agent to apply the final Decision Grid.
         """
         audit_id = f"audit_{int(time.time())}_{uuid.uuid4().hex[:6]}"
         start_time = time.time()
@@ -59,43 +55,40 @@ class MultiAgentOrchestrator:
             request.context = {}
 
         # 1. Parallel Execution of Base Agents (I/O Bound)
-        results_list = await asyncio.gather(
-            self.photo_agent.process(request),
-            self.title_agent.process(request),
-            self.specs_agent.process(request),
-            return_exceptions=True,
-        )
+        # We need to run PhotoAgent first or in parallel?
+        # TextualAgent requires PhotoAgent output for the prompt.
+        # So we cannot run them fully in parallel if TextualAgent depends on PhotoAgent output.
+        # Wait, the prompt instruction said: "Photo Agent Output (Textual Only): ..."
+        # And my implementation of TextualAgent reads `request.context["photo_agent"]`.
+        # This implies sequential dependency: Photo -> Textual.
 
-        # Ensure results_list is a list
-        results = cast(List[Any], results_list)
+        # Let's check the dependency.
+        # TextualAgent uses `request.context.get("photo_agent")`.
+        # So PhotoAgent MUST run before TextualAgent.
 
-        # Process results with explicit types
-        def get_typed_res(res: Any, name: str, cls: Any) -> Any:
-            if isinstance(res, Exception):
-                return self._error_response(name, res, cls)
-            if isinstance(res, cls):
-                return res
-            return self._error_response(
-                name, Exception(f"Unexpected type {type(res)}"), cls
+        # Step 1: Run Photo Agent
+        try:
+            photo_output = await self.photo_agent.process(request)
+            photo_res: PhotoAgentResponse = cast(PhotoAgentResponse, photo_output)
+        except Exception as e:
+            photo_res = self._error_response("PhotoAgent", e, PhotoAgentResponse)
+
+        # Inject Photo Agent results into context for Textual Agent and others
+        request.context["photo_agent"] = photo_res
+
+        # Step 2: Run Textual Agent (which now has photo context)
+        try:
+            textual_output = await self.textual_agent.process(request)
+            textual_res: TextualAgentResponse = cast(
+                TextualAgentResponse, textual_output
             )
-
-        photo_res: PhotoAgentResponse = get_typed_res(
-            results[0], "PhotoAgent", PhotoAgentResponse
-        )
-        title_res: TitleAgentResponse = get_typed_res(
-            results[1], "TitleAgent", TitleAgentResponse
-        )
-        specs_res: SpecsAgentResponse = get_typed_res(
-            results[2], "SpecsAgent", SpecsAgentResponse
-        )
+        except Exception as e:
+            textual_res = self._error_response("TextualAgent", e, TextualAgentResponse)
 
         # 2. Conditional Category Agent Execution
         category_res: Optional[CategoryAgentResponse] = None
 
-        # Inject Photo Agent results into context for Category Agent
-        request.context["photo_agent"] = photo_res
-
-        if not self._has_outliers(photo_res, title_res, specs_res):
+        if not self._has_outliers(photo_res, textual_res):
             logger.info(f"No outliers detected. Running CategoryAgent for {audit_id}")
             try:
                 cat_output = await self.category_agent.process(request)
@@ -112,8 +105,7 @@ class MultiAgentOrchestrator:
         # 3. RCA Agent Execution
         request.context["agent_results"] = {
             "photo": photo_res,
-            "title": title_res,
-            "specs": specs_res,
+            "textual": textual_res,
             "category": category_res,
         }
 
@@ -137,8 +129,7 @@ class MultiAgentOrchestrator:
 
         total_cost = (
             photo_res.cost
-            + title_res.cost
-            + specs_res.cost
+            + textual_res.cost
             + (category_res.cost if category_res else 0.0)
             + rca_res.cost
             + master_res.cost
@@ -151,8 +142,7 @@ class MultiAgentOrchestrator:
         return MultiAgentAuditResult(
             audit_id=audit_id,
             photo_agent=photo_res,
-            title_agent=title_res,
-            specs_agent=specs_res,
+            textual_agent=textual_res,
             category_agent=category_res,
             rca_agent=rca_res,
             master_agent=master_res,
@@ -163,17 +153,12 @@ class MultiAgentOrchestrator:
     def _has_outliers(
         self,
         photo: PhotoAgentResponse,
-        title: TitleAgentResponse,
-        specs: SpecsAgentResponse,
+        textual: TextualAgentResponse,
     ) -> bool:
         """
         Check if any agent detected major outliers or failed.
         """
-        if (
-            photo.status == "failure"
-            or title.status == "failure"
-            or specs.status == "failure"
-        ):
+        if photo.status == "failure" or textual.status == "failure":
             return True
 
         # Check Photo outliers
@@ -182,20 +167,50 @@ class MultiAgentOrchestrator:
                 if getattr(val, "status", None) == "outlier":
                     return True
 
-        # Check Title outliers
-        if title.analysis:
-            if title.analysis.task_1:
-                for val in title.analysis.task_1.values():
-                    if getattr(val, "status", None) == "outlier":
-                        return True
-            if title.analysis.task_4:
-                for val in title.analysis.task_4.values():
+        # Check Textual outliers
+        if textual.analysis:
+            # Task 1: Title Assessment
+            if textual.analysis.task_1:
+                if (
+                    textual.analysis.task_1.spell_error.status == "outlier"
+                    or textual.analysis.task_1.duplicate_words.status == "outlier"
+                    or textual.analysis.task_1.internal_contradiction.status
+                    == "outlier"
+                ):
+                    return True
+
+            # Task 2: Specs Assessment
+            if textual.analysis.task_2:
+                if (
+                    textual.analysis.task_2.spell_error.status == "outlier"
+                    or textual.analysis.task_2.duplicate_specifications.status
+                    == "outlier"
+                    or textual.analysis.task_2.internal_contradiction.status
+                    == "outlier"
+                ):
+                    return True
+
+            # Task 5: Cross-Modal Verification
+            if textual.analysis.task_5:
+                # Iterate over fields in task_5
+                for field_name in textual.analysis.task_5.model_fields:
+                    val = getattr(textual.analysis.task_5, field_name)
                     if getattr(val, "status", None) == "outlier":
                         return True
 
-        # Check Specs outliers
-        if specs.analysis and specs.analysis.contradictions:
-            return True
+            # Task 6: Category Verification
+            if textual.analysis.task_6:
+                for field_name in textual.analysis.task_6.model_fields:
+                    val = getattr(textual.analysis.task_6, field_name)
+                    if getattr(val, "status", None) == "outlier":
+                        return True
+
+            # Task 7: Advanced Integrity Checks
+            if textual.analysis.task_7:
+                for field_name in textual.analysis.task_7.model_fields:
+                    val = getattr(textual.analysis.task_7, field_name)
+                    if getattr(val, "status", None) == "outlier":
+                        return True
 
         return False
 

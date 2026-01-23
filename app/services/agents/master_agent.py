@@ -7,8 +7,7 @@ from app.schemas.agent_schemas import (
     AgentRequest,
     MasterAgentResponse,
     PhotoAgentResponse,
-    TitleAgentResponse,
-    SpecsAgentResponse,
+    TextualAgentResponse,
     RCAAgentResponse,
     CrossValidation,
     FinalErrors,
@@ -42,14 +41,12 @@ class MasterAgent(BaseAgent):
         context = request.context or {}
         agent_results = context.get("agent_results", {})
         rca_res: Optional[RCAAgentResponse] = context.get("rca_result")
-        title_res: Optional[TitleAgentResponse] = agent_results.get("title")
+        textual_res: Optional[TextualAgentResponse] = agent_results.get("textual")
 
-        # 1. Extract Search Query from Title Agent (used for SEO/Searchability check)
+        # 1. Extract Search Query from Textual Agent (used for SEO/Searchability check)
         search_query = ""
-        if title_res and title_res.analysis:
-            search_query = title_res.analysis.task_3
-            if isinstance(search_query, dict):
-                search_query = search_query.get("product_search_query", "")
+        if textual_res and textual_res.analysis and textual_res.analysis.task_4:
+            search_query = textual_res.analysis.task_4.product_search_query
 
         # 2. Extract Facts (The 5 binary flags required by the Truth Table)
         facts = self._extract_facts_from_rca(rca_res)
