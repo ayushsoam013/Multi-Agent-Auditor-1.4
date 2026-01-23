@@ -19,10 +19,10 @@ graph TD
     subgraph "Phase 1: Analysis"
         direction TB
         Orchestrator --> PhotoAgent[📸 Photo Specialist]
-        PhotoAgent -->|Image Context| TextualAgent[📝 Text & Cross-Modal Specialist]
+        PhotoAgent -->|Image Context| TextualAgent[📝 Textual Agent]
     end
 
-    subgraph MasterAgent [🧠 Master Agent: Decision & Governance]
+    subgraph MasterAgent [🧠 Master Agent]
         direction TB
         RCA[🔍 RCA Agent] --> Grid{⚡ Decision Grid}
     end
@@ -55,14 +55,15 @@ The system is built on a **"Plug-and-Play"** architecture. New agents can be ins
 
 Breaking the task into agents allows us to use **Right-Sized Models**, optimizing the cost-to-performance ratio.
 
-| Component          | Task Complexity             | Recommended Model           | Cost Implication         |
-| :----------------- | :-------------------------- | :-------------------------- | :----------------------- |
-| **Photo Agent**    | High (Visual Understanding) | **Gemini 1.5 Flash**        | Moderate (Visual tokens) |
-| **Textual Agent**  | High (Cross-Modal Logic)    | **Gemini 1.5 Flash**        | Low                      |
-| **RCA Agent**      | Medium (Synthesis)          | **Gemini 1.5 Flash**        | Low                      |
-| **Master Agent**   | Low (Lookup + Formatting)   | **Gemini 1.5 Flash**        | Low                      |
+| Component         | Task Complexity             | Recommended Model    | Cost Implication         |
+| :---------------- | :-------------------------- | :------------------- | :----------------------- |
+| **Photo Agent**   | High (Visual Understanding) | **Gemini 1.5 Flash** | Moderate (Visual tokens) |
+| **Textual Agent** | High (Cross-Modal Logic)    | **Gemini 1.5 Flash** | Low                      |
+| **RCA Agent**     | Medium (Synthesis)          | **Gemini 1.5 Flash** | Low                      |
+| **Master Agent**  | Low (Lookup + Formatting)   | **Gemini 1.5 Flash** | Low                      |
 
 **Total Audit Cost vs. Single Large Model:**
+
 - **Single Giant Model (e.g., GPT-4o / Gemini Pro)**: High cost per audit, slower.
 - **Multi-Agent (Flash)**: Significantly cheaper.
 
@@ -72,8 +73,8 @@ Breaking the task into agents allows us to use **Right-Sized Models**, optimizin
 
 ### The "Dumb" Master Agent
 
-The `MasterAgent` is designed to be deterministic regarding the *decision* (Pass/Fail) while using the LLM only for the *recommendation*.
+The `MasterAgent` is designed to be deterministic regarding the _decision_ (Pass/Fail) while using the LLM only for the _recommendation_.
 
 1.  **Reliability**: The decision logic is hard-coded in a Truth Table (`decision_grid.csv`). An LLM hallucination cannot accidentally "Pass" a bad product.
 2.  **Consistency**: Identical error patterns always yield the exact same verdict code.
-3.  **Politeness**: The LLM is used strictly to phrase the rejection/review message politely, not to decide *if* it should be rejected.
+3.  **Politeness**: The LLM is used strictly to phrase the rejection/review message politely, not to decide _if_ it should be rejected.
