@@ -84,6 +84,65 @@ class SpecsAgentResponse(BaseAgentResponse):
     analysis: Optional[SpecsAnalysisResult] = None
 
 
+# --- Textual Agent Schemas (New Combined Agent) ---
+
+
+class TextualTask1(BaseModel):
+    spell_error: TaskStatus
+    duplicate_words: TaskStatus
+    internal_contradiction: TaskStatus
+
+
+class TextualTask2(BaseModel):
+    spell_error: TaskStatus
+    duplicate_specifications: TaskStatus
+    internal_contradiction: TaskStatus
+
+
+class TextualTask3(BaseModel):
+    identified_entities: List[IdentifiedEntity]
+
+
+class TextualTask4(BaseModel):
+    product_search_query: str
+
+
+class TextualTask5(BaseModel):
+    photo_title: TaskStatus
+    photo_specs: TaskStatus
+    title_specs: TaskStatus
+    query_internal: TaskStatus
+    photo_description_title: TaskStatus
+    photo_specs_specs: TaskStatus
+
+
+class TextualTask6(BaseModel):
+    primary_object_category: TaskStatus
+    photo_description_category: TaskStatus
+    query_category: TaskStatus
+    title_category: TaskStatus
+
+
+class TextualTask7(BaseModel):
+    mechanism_mismatch: TaskStatus
+    entity_mismatch: TaskStatus
+    visual_mimicry: TaskStatus
+
+
+class TextualAnalysisResult(BaseModel):
+    task_1: TextualTask1
+    task_2: TextualTask2
+    task_3: TextualTask3
+    task_4: TextualTask4
+    task_5: TextualTask5
+    task_6: TextualTask6
+    task_7: TextualTask7
+
+
+class TextualAgentResponse(BaseAgentResponse):
+    analysis: Optional[TextualAnalysisResult] = None
+
+
 # Category Agent Specific Schemas
 class CategoryAnalysisResult(BaseModel):
     suggested_category: str
@@ -156,6 +215,7 @@ class MultiAgentAuditResult(BaseModel):
     photo_agent: Optional[PhotoAgentResponse] = None
     title_agent: Optional[TitleAgentResponse] = None
     specs_agent: Optional[SpecsAgentResponse] = None
+    textual_agent: Optional[TextualAgentResponse] = None
     category_agent: Optional[CategoryAgentResponse] = None
     rca_agent: Optional[RCAAgentResponse] = None
     master_agent: Optional[MasterAgentResponse] = None
