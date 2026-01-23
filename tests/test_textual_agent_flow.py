@@ -130,9 +130,9 @@ async def test_orchestrator_runs_textual_agent():
     with (
         patch("app.services.multi_agent_orchestrator.PhotoAgent") as MockPhotoAgent,
         patch("app.services.multi_agent_orchestrator.TextualAgent") as MockTextualAgent,
-        patch(
-            "app.services.multi_agent_orchestrator.CategoryAgent"
-        ) as MockCategoryAgent,
+        # patch(
+        #     "app.services.multi_agent_orchestrator.CategoryAgent"
+        # ) as MockCategoryAgent,
         patch("app.services.multi_agent_orchestrator.RCAAgent") as MockRCAAgent,
         patch("app.services.multi_agent_orchestrator.MasterAgent") as MockMasterAgent,
     ):
@@ -143,8 +143,8 @@ async def test_orchestrator_runs_textual_agent():
         textual_instance = MockTextualAgent.return_value
         textual_instance.process = AsyncMock(return_value=mock_textual_response)
 
-        category_instance = MockCategoryAgent.return_value
-        category_instance.process = AsyncMock(return_value=mock_category_response)
+        # category_instance = MockCategoryAgent.return_value
+        # category_instance.process = AsyncMock(return_value=mock_category_response)
 
         rca_instance = MockRCAAgent.return_value
         rca_instance.process = AsyncMock(return_value=mock_rca_response)

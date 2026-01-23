@@ -15,7 +15,8 @@ from app.schemas.agent_schemas import (
 )
 from app.services.agents.photo_agent import PhotoAgent
 from app.services.agents.textual_agent import TextualAgent
-from app.services.agents.category_agent import CategoryAgent
+
+# from app.services.agents.category_agent import CategoryAgent
 from app.services.agents.rca_agent import RCAAgent
 from app.services.agents.master_agent import MasterAgent
 
@@ -32,7 +33,7 @@ class MultiAgentOrchestrator:
         # Initialize all specialized agents
         self.photo_agent = PhotoAgent()
         self.textual_agent = TextualAgent()
-        self.category_agent = CategoryAgent()
+        # self.category_agent = CategoryAgent()
         self.rca_agent = RCAAgent()
         self.master_agent = MasterAgent()
 
@@ -90,13 +91,14 @@ class MultiAgentOrchestrator:
 
         if not self._has_outliers(photo_res, textual_res):
             logger.info(f"No outliers detected. Running CategoryAgent for {audit_id}")
-            try:
-                cat_output = await self.category_agent.process(request)
-                category_res = cast(CategoryAgentResponse, cat_output)
-            except Exception as e:
-                category_res = self._error_response(
-                    "CategoryAgent", e, CategoryAgentResponse
-                )
+            # try:
+            #     cat_output = await self.category_agent.process(request)
+            #     category_res = cast(CategoryAgentResponse, cat_output)
+            # except Exception as e:
+            #     category_res = self._error_response(
+            #         "CategoryAgent", e, CategoryAgentResponse
+            #     )
+            logger.info("CategoryAgent is disabled.")
         else:
             logger.info(
                 f"Outliers detected or agent failure. Skipping CategoryAgent for {audit_id}"
