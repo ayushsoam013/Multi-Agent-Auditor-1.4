@@ -11,28 +11,23 @@ The audit process is managed by the `MultiAgentOrchestrator` (`app/services/mult
 1.  **Step 1: Visual Analysis**
     *   **Agent**: `PhotoAgent`
     *   **Logic**: Analyzes the product image for visual attributes, OCR text, photo specifications, and quality issues.
-    *   **Output**: Used by `TextualAgent`, `CategoryAgent`, and `RCAAgent`.
+    *   **Output**: Used by `TextualAgent` and `RCAAgent`.
 
 2.  **Step 2: Textual & Cross-Modal Analysis**
     *   **Agent**: `TextualAgent`
     *   **Dependency**: `PhotoAgent` results.
     *   **Logic**: Audits Title and Specifications for internal quality. Performs cross-modal consistency checks (e.g., Title vs. Photo, Specs vs. Photo).
 
-3.  **Step 3: Conditional Category Verification**
-    *   **Agent**: `CategoryAgent`
-    *   **Dependency**: `PhotoAgent` and `TextualAgent` results.
-    *   **Condition**: Runs only if **NO** major outliers are detected in the Photo or Textual phases.
-    *   **Logic**: Validates if the product belongs to the assigned category using visual and textual clues.
-
-4.  **Step 4: Root Cause Analysis (RCA)**
+3.  **Step 3: Root Cause Analysis (RCA)**
     *   **Agent**: `RCAAgent`
-    *   **Dependency**: All previous agent results (`Photo`, `Textual`, and `Category` if available).
+    *   **Dependency**: All previous agent results (`Photo` and `Textual`).
     *   **Logic**: Synthesizes all findings to identify the root cause of issues and assigns severity.
 
-5.  **Step 5: Final Decision & Recommendations**
+4.  **Step 4: Final Decision & Recommendations**
     *   **Agent**: `MasterAgent`
     *   **Dependency**: `RCAAgent` results.
     *   **Logic**: Maps RCA findings to a Decision Grid (Truth Table) to determine the verdict (PASS/FAIL/REVIEW) and generates a seller-facing recommendation.
+
 
 ---
 
@@ -198,36 +193,7 @@ Give response for task and subtasks of task 1,  task 2, task 5, task 6 and task 
 }
 ```
 
-### 2.3. CategoryAgent
-*   **Purpose**: Validates if the current category is correct and suggests alternatives based on title, specs, and visual analysis.
-*   **Model**: `gemini-1.5-flash`
-*   **Prompt**:
-```text
-Product Title: {request.product_title}
-Product Specifications: {request.product_specs}
-Current Category (if any): {request.mcat_name}
-Photo Analysis:
-- Visual Object: {photo_object}
-- Visual Description: {photo_description}
-- Detected Text (OCR): {ocr_text}
-
-Instructions:
-1. Analyze the product information provided.
-2. Determine the most accurate category for this product.
-3. If the current category is correct, confirm it.
-4. If there is a better category, suggest it.
-5. Provide reasoning for your choice.
-
-Return the results in this strict JSON format:
-{
-  "suggested_category": "string",
-  "confidence_score": float (0.0 to 1.0),
-  "reasoning": "string",
-  "alternative_categories": ["string"]
-}
-```
-
-### 2.4. RCAAgent
+### 2.3. RCAAgent
 *   **Purpose**: Synthesizes all agent findings to identify root causes and assign severity.
 *   **Model**: `gemini-1.5-flash`
 *   **Prompt**:
@@ -261,7 +227,7 @@ Return the results in this strict JSON format:
 }
 ```
 
-### 2.5. MasterAgent
+### 2.4. MasterAgent
 *   **Purpose**: The final decision maker. It maps RCA issues to 5 binary flags to look up a decision in a truth table and generates a polite recommendation.
 *   **Model**: `gemini-1.5-flash`
 *   **Primary Logic**: Decision Grid (32-row truth table loaded from `config/decision_grid.json`).

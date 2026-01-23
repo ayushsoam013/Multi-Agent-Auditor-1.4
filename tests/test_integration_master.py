@@ -66,8 +66,10 @@ async def test_orchestrator_master_agent_props():
     print(f"Master Decision Code: {result.master_agent.decision_code}")
 
     # Check expectations
-    assert result.master_agent.cost == 0.0
-    assert result.master_agent.processing_time > 0
+    assert (
+        result.master_agent.cost > 0.0
+    )  # Expect cost > 0 for PASS now (LLM recommendation)
+    assert result.master_agent.processing_time > 0  # Expect some time
     assert result.master_agent.decision_code == "00000"
 
 

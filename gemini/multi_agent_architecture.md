@@ -17,14 +17,9 @@ Input (Product Data + Context)
 │   - Textual Agent                   │
 │     (Title, Specs, Cross-Modal)     │
 └─────────────────────────────────────┘
-    ↓ (If No Outliers)
-┌─────────────────────────────────────┐
-│   Phase 3: Category Verification    │
-│   - Category Agent                  │
-└─────────────────────────────────────┘
     ↓
 ┌─────────────────────────────────────┐
-│   Phase 4: Synthesis & Decision     │
+│   Phase 3: Synthesis & Decision     │
 │   - RCA Agent (Root Cause Analysis) │
 │   - Master Agent (Decision Grid)    │
 └─────────────────────────────────────┘
@@ -55,15 +50,7 @@ Final Audit Result
 - **Category Checks:** Does the product fit the category definition?
 **Output:** Detailed breakdown of textual and cross-modal consistency.
 
-### **3. Category Agent (Conditional)**
-**Role:** The "Classifier".
-**Input:** Title, Specs, Photo Context, Current Category.
-**Processing:**
-- Validates if the assigned category (MCAT) is correct.
-- Suggests alternative categories if the current one is wrong.
-**Condition:** Only runs if Photo and Textual agents found no "blocker" issues (outliers).
-
-### **4. RCA Agent**
+### **3. RCA Agent**
 **Role:** The "Analyst".
 **Input:** Outputs from all previous agents.
 **Processing:**
@@ -71,7 +58,7 @@ Final Audit Result
 - Identifies the *Root Cause* of any failure.
 - Assigns severity (Low/Medium/High/Critical).
 
-### **5. Master Agent**
+### **4. Master Agent**
 **Role:** The "Judge".
 **Input:** RCA Report.
 **Processing:**
@@ -90,8 +77,9 @@ Final Audit Result
    - Manages data passing (`context`) between agents.
 
 2. **`agents/` Directory**
-   - Contains individual agent classes inheriting from `BaseAgent`.
-   - `photo_agent.py`, `textual_agent.py`, `category_agent.py`, `rca_agent.py`, `master_agent.py`.
+    - Contains individual agent classes inheriting from `BaseAgent`.
+    - `photo_agent.py`, `textual_agent.py`, `rca_agent.py`, `master_agent.py`.
+
 
 ### **B. Decision Grid Design**
 
@@ -110,19 +98,15 @@ Pydantic models ensure type safety across the pipeline:
 1. **`AgentRequest`**: Universal input.
 2. **`PhotoAgentResponse`**: Visual analysis results.
 3. **`TextualAgentResponse`**: Text & cross-modal results.
-4. **`CategoryAgentResponse`**: Category validation results.
-5. **`RCAAgentResponse`**: Root cause synthesis.
-6. **`MasterAgentResponse`**: Final verdict and recommendation.
+4. **`RCAAgentResponse`**: Root cause synthesis.
+5. **`MasterAgentResponse`**: Final verdict and recommendation.
 
 ---
 
 ## **V. Key Technical Considerations**
 
-### **A. Conditional Execution**
-To save costs and time, the **Category Agent** is skipped if the product is already determined to be an "Outlier" (e.g., blurry photo or gibberish title) by the upstream agents.
-
-### **B. Context Propagation**
+### **A. Context Propagation**
 The `PhotoAgent` runs first so that its visual insights (e.g., "This is a red chair") are available to the `TextualAgent` when it checks if the title ("Blue Table") is accurate.
 
-### **C. Deterministic Decision Making**
+### **B. Deterministic Decision Making**
 The final verdict is **not** decided by an LLM prompt ("Is this good?"). It is decided by a rigid Truth Table based on the factual findings of the agents. This prevents LLM "mood swings" from affecting compliance standards.

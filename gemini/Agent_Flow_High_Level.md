@@ -22,12 +22,8 @@ graph TD
         PhotoAgent -->|Image Context| TextualAgent[📝 Text & Cross-Modal Specialist]
     end
 
-    subgraph "Phase 2: Verification"
-        TextualAgent -->|If No Outliers| CategoryAgent[📂 Category Specialist]
-    end
-
-    subgraph "Phase 3: Decision & Governance"
-        CategoryAgent --> RCA[🔍 Root Cause Analysis Agent]
+    subgraph "Phase 2: Decision & Governance"
+        TextualAgent --> RCA[🔍 Root Cause Analysis Agent]
         RCA --> MasterAgent[🧠 Master Agent]
         
         DecisionGrid{⚡ Decision Grid} -.->|Rules| MasterAgent
@@ -39,9 +35,8 @@ graph TD
 
 1.  **Visual Analysis (PhotoAgent)**: Looks at the image quality, content, and extracts text (OCR).
 2.  **Textual & Cross-Modal Analysis (TextualAgent)**: Validates Title and Specs. Crucially, it checks for consistency between the text and the visual evidence provided by the Photo Agent.
-3.  **Conditional Category Check (CategoryAgent)**: If the product looks "clean" so far, this agent double-checks if it's in the correct aisle (Category).
-4.  **Root Cause Analysis (RCAAgent)**: Aggregates all findings to pinpoint the exact nature and severity of any issues.
-5.  **Governance (MasterAgent)**: A deterministic "Rule Book" (Decision Grid) evaluates the RCA findings to issue a binding PASS/FAIL/REVIEW verdict.
+3.  **Root Cause Analysis (RCAAgent)**: Aggregates all findings to pinpoint the exact nature and severity of any issues.
+4.  **Governance (MasterAgent)**: A deterministic "Rule Book" (Decision Grid) evaluates the RCA findings to issue a binding PASS/FAIL/REVIEW verdict.
 
 ---
 
@@ -65,13 +60,12 @@ Breaking the task into agents allows us to use **Right-Sized Models**, optimizin
 | :---------------- | :-------------------------- | :-------------------------- | :----------------------- |
 | **Photo Agent**   | High (Visual Understanding) | **Gemini 1.5 Flash**        | Moderate (Visual tokens) |
 | **Textual Agent** | High (Cross-Modal Logic)    | **Gemini 1.5 Flash**        | Low                      |
-| **Category Agent**| Medium (Classification)     | **Gemini 1.5 Flash**        | Low (Conditional)        |
 | **RCA Agent**     | Medium (Synthesis)          | **Gemini 1.5 Flash**        | Low                      |
 | **Master Agent**  | Low (Lookup + Formatting)   | **Gemini 1.5 Flash**        | Low                      |
 
 **Total Audit Cost vs. Single Large Model:**
 - **Single Giant Model (e.g., GPT-4o / Gemini Pro)**: High cost per audit, slower.
-- **Multi-Agent (Flash)**: Significantly cheaper. The conditional execution of the Category Agent further reduces costs for obvious outliers.
+- **Multi-Agent (Flash)**: Significantly cheaper.
 
 ---
 

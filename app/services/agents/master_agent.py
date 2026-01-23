@@ -60,20 +60,17 @@ class MasterAgent(BaseAgent):
         if not decision_text or decision_text.strip() == "":
             action = "PASS"
             decision_text = "Audit Passed"
-            seller_recommendation = "Your product listing looks great and meets all quality standards. No further action is required."
         else:
             if "Rejected" in decision_text:
                 action = "FAIL"
             else:
                 action = "REVIEW"
 
-            # Generate Polite Recommendation using LLM based on the identified issues
-            (
-                seller_recommendation,
-                rec_cost,
-            ) = await self._generate_seller_recommendation(
-                decision_text, rca_res, request
-            )
+        # Generate Polite Recommendation using LLM based on the identified issues (or lack thereof)
+        (
+            seller_recommendation,
+            rec_cost,
+        ) = await self._generate_seller_recommendation(decision_text, rca_res, request)
 
         # 4. Construct Final Response
         reasons = [decision_text]
@@ -120,18 +117,19 @@ class MasterAgent(BaseAgent):
                 )
 
             prompt = f"""
-            You are a polite quality assurance expert. A product listing has been audited and found to have issues.
+            You are a polite quality assurance expert. A product listing has been audited.
             
             AUDIT OUTCOME: {decision_text}
             SPECIFIC ISSUES FOUND:
-            {issues_str}
+            {issues_str if issues_str else "None. The product looks good."}
             
             PRODUCT TITLE: {request.product_title}
             
-            TASK: Write a polite, reasonable, and helpful recommendation to the seller to help them improve this listing.
+            TASK: Write a polite, reasonable, and helpful recommendation to the seller.
+            - If passed: Congratulate them on a high-quality listing.
+            - If issues found: Suggest improvements based on specific errors.
             - Tone: Suggestive, polite, and logical.
             - Length: Strictly no more than 2 lines.
-            - Focus: Be specific to the errors mentioned (e.g. mismatch between title and photo).
             
             RECOMMENDATION:
             """

@@ -33,16 +33,11 @@ The `MultiAgentOrchestrator` manages the lifecycle and execution order of specia
     *   **Dependency**: Requires `PhotoAgent` output.
     *   **Action**: Audits Title and Specs for internal quality and checks for contradictions with the Photo (e.g., "Photo shows a Chair, Title says Table").
 
-3.  **Step 3: Conditional Category Verification (CategoryAgent)**
-    *   **Agent**: `CategoryAgent`
-    *   **Condition**: Runs **only if** no major outliers are detected in the previous steps.
-    *   **Action**: Validates if the product belongs to the assigned category using visual and textual clues.
-
-4.  **Step 4: Root Cause Analysis (RCAAgent)**
+3.  **Step 3: Root Cause Analysis (RCAAgent)**
     *   **Agent**: `RCAAgent`
-    *   **Action**: Synthesizes all findings from Photo, Textual, and Category agents to identify the root cause of issues and assign severity.
+    *   **Action**: Synthesizes all findings from Photo and Textual agents to identify the root cause of issues and assign severity.
 
-5.  **Step 5: Final Decision (MasterAgent)**
+4.  **Step 4: Final Decision (MasterAgent)**
     *   **Agent**: `MasterAgent`
     *   **Action**: Maps RCA findings to a Decision Grid (Truth Table) to determine the verdict (PASS/FAIL/REVIEW) and generates a seller-facing recommendation.
 
@@ -83,21 +78,14 @@ All agents inherit from `BaseAgent`, which provides:
   - **Task 6 & 7:** Category alignment and core functional checks.
 - **Pydantic Schema:** `TextualAgentResponse` containing `TextualAnalysisResult`.
 
-### **C. CategoryAgent**
-
-- **Class:** `CategoryAgent` (in `category_agent.py`)
-- **Role:** Specialized category validator.
-- **Logic:** Runs conditionally. Suggests better categories if the current one is incorrect based on visual and textual evidence.
-- **Pydantic Schema:** `CategoryAgentResponse` containing `CategoryAnalysisResult`.
-
-### **D. RCAAgent**
+### **C. RCAAgent**
 
 - **Class:** `RCAAgent` (in `rca_agent.py`)
 - **Role:** Root Cause Analysis synthesizer.
 - **Logic:** Aggregates all agent outputs to pinpoint specific issues (e.g., "PHOTO_TITLE_CONTRADICTION") and assigns severity.
 - **Pydantic Schema:** `RCAAgentResponse`.
 
-### **E. MasterAgent**
+### **D. MasterAgent**
 
 - **Class:** `MasterAgent` (in `master_agent.py`)
 - **Role:** Final decision maker.
@@ -121,7 +109,6 @@ The system relies heavily on Pydantic for "Type Safety" between the LLM and the 
 | `BaseAgentResponse`     | Common fields like `agent_name`, `status`, and `processing_time`.                      |
 | `PhotoAgentResponse`    | Extends base with `PhotoAnalysisResult`.                                               |
 | `TextualAgentResponse`  | Extends base with `TextualAnalysisResult`.                                             |
-| `CategoryAgentResponse` | Extends base with `CategoryAnalysisResult`.                                            |
 | `RCAAgentResponse`      | Extends base with `RCAAnalysisResult`.                                                 |
 | `MasterAgentResponse`   | Includes the final decision, reasoning, and cross-validation flags.                    |
 | `MultiAgentAuditResult` | The top-level response returned to the API, containing all individual agent responses. |
