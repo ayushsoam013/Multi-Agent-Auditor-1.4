@@ -8,6 +8,7 @@ The backend follows a layered architecture to ensure separation of concerns.
 - **Service Layer** (`app/services`): Business logic and Agent orchestration.
     - `MultiAgentOrchestrator`: Coordinates multiple specialized agents.
     - `LLMManager`: Manages different LLM providers (Gemini, LiteLLM).
+    - **Cost Tracking**: Agents must return cost metrics. `GeminiGenService` calculates cost per token usage. `LiteLLMService` uses `litellm.completion_cost`.
 - **Schema Layer** (`app/schemas`): Pydantic models for data validation.
 - **Core** (`app/core`): Centralized configuration via `pydantic-settings`.
 

@@ -5,12 +5,14 @@ This document defines the architecture, coding standards, and operational protoc
 ## 1. Project Overview & Architecture
 
 *   **Type**: Hybrid Application (FastAPI Backend + Streamlit Frontend).
-*   **Goal**: Automated auditing using Multi-Agent Systems (Gemini/LiteLLM) and Vector Search (Qdrant).
+*   **Goal**: Automated auditing using Multi-Agent Systems (Gemini/LiteLLM).
 *   **Key Constraints**:
-    *   **Decoupling**: Frontend (`streamlit_app/`) **NEVER** interacts with the database, vector store, or LLMs directly. It communicates solely via the FastAPI backend.
+    *   **Decoupling**: Frontend (`streamlit_app/`) **NEVER** interacts with the database or LLMs directly. It communicates solely via the FastAPI backend.
     *   **Configuration**: Secrets and environment-specific settings must reside in `.env` and be accessed via `app.core.config.settings`.
 
 ### Directory Map
+*   `AGENTS.md`: Global coding guide (this document).
+*   `AGENTS_PROMPTS.md`: Detailed breakdown of all agents, their execution order, and specific LLM prompts.
 *   `app/`: Backend (FastAPI) logic.
     *   `api/v1/`: Versioned API endpoints and router definitions.
     *   `services/`: Business logic, agent orchestration, and LLM integrations.
@@ -94,6 +96,7 @@ from app.services.audit_service import AuditService
         logger.error(f"Agent failed: {e}")
         return ErrorResponse(status="failure", message=str(e))
     ```
+*   **Cost Tracking**: All agents must report token usage and calculated costs in their response metadata.
 
 ### 3.5. Frontend (Streamlit) Specifics
 *   **API Wrapper**: Wrap `requests` calls in `try/except`.

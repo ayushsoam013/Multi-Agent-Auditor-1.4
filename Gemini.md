@@ -34,7 +34,12 @@ Please refer to the detailed guidelines for each component before making changes
 - **Configurability**: All changing parameters (API keys, URLs, Thresholds) must be in `.env` or injected via dependency injection, not hardcoded.
 - **Agentic Design**: When extending agent capabilities, define clear "Skills" or "Tools" in the backend that can be invoked via simple API calls.
 
-## 5. Updates & Maintenance
+## 5. Deployment Guidelines
+
+For deploying this hybrid application (e.g., on Render), follow the **[Render Deployment Guide](gemini/Render_Deployment_Guide.md)**. It details how to run both FastAPI and Streamlit in a single-service container.
+
+## 6. Updates & Maintenance
+
 
 - When adding a new feature, update both the `app/` (API) and `streamlit_app/` (UI) accordingly.
 - Keep these `Gemini.md` files updated if architectural patterns change.

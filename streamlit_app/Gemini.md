@@ -7,7 +7,6 @@ The frontend is a multipage Streamlit application.
 - **Main Entry**: `streamlit_app/app.py`
 - **Pages** (`streamlit_app/pages/`):
     - `1_Health_Check.py`: API and system status monitoring.
-    - `2_Items_Explorer.py`: Visualization of processed items.
     - `3_Multi_Agent_Auditor.py`: Core UI for triggering audits.
     - `Chat.py`: LLM chat interface.
 
