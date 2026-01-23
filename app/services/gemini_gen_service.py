@@ -111,6 +111,7 @@ class GeminiGenService:
             "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
             "gemini-1.5-pro": {"input": 3.50, "output": 10.50},
             "gemini-2.0-flash": {"input": 0.10, "output": 0.40},
+            "gemini-2.5-flash-lite": {"input": 0.075, "output": 0.30},
         }
 
         # Default to highest if unknown, or 0? Let's default to flash pricing as fallback or 0.

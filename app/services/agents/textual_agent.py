@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import Dict, Any, Optional
+from app.core.config import settings
 from app.services.agents.base_agent import BaseAgent
 from app.schemas.agent_schemas import AgentRequest, TextualAgentResponse
 
@@ -17,7 +18,7 @@ class TextualAgent(BaseAgent):
     def __init__(self, model_name: Optional[str] = None):
         super().__init__(
             agent_name="TextualAgent",
-            model_name=model_name or "gemini-1.5-flash",
+            model_name=model_name or settings.GEMINI_GEN_MODEL,
             response_class=TextualAgentResponse,
         )
 

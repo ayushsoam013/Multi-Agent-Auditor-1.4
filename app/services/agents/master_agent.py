@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import Dict, Any, Optional, List
+from app.core.config import settings
 from app.services.agents.base_agent import BaseAgent
 from app.core.decision_grid import decision_grid_loader
 from app.schemas.agent_schemas import (
@@ -26,7 +27,7 @@ class MasterAgent(BaseAgent):
     def __init__(self, model_name: Optional[str] = None):
         super().__init__(
             agent_name="MasterAgent",
-            model_name=model_name or "gemini-1.5-flash",
+            model_name=model_name or settings.GEMINI_GEN_MODEL,
             response_class=MasterAgentResponse,
         )
 
