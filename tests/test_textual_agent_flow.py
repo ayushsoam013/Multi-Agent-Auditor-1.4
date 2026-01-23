@@ -41,7 +41,6 @@ async def test_orchestrator_runs_textual_agent():
         analysis={
             "task_1": {
                 "primary_object": "Test Object",
-                "photo_description": "A test object description",
             },
             "task_2": {"ocr_text": ["Sample Text"]},
             "task_3": {"photo_specifications": {"Color": "Red"}},
@@ -79,12 +78,10 @@ async def test_orchestrator_runs_textual_agent():
                 photo_specs=TaskStatus(status="not_outlier", reason=""),
                 title_specs=TaskStatus(status="not_outlier", reason=""),
                 query_internal=TaskStatus(status="not_outlier", reason=""),
-                photo_description_title=TaskStatus(status="not_outlier", reason=""),
                 photo_specs_specs=TaskStatus(status="not_outlier", reason=""),
             ),
             task_6=TextualTask6(
                 primary_object_category=TaskStatus(status="not_outlier", reason=""),
-                photo_description_category=TaskStatus(status="not_outlier", reason=""),
                 query_category=TaskStatus(status="not_outlier", reason=""),
                 title_category=TaskStatus(status="not_outlier", reason=""),
             ),

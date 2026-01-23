@@ -47,16 +47,19 @@ class TextualAgent(BaseAgent):
             if analysis:
                 task_1 = get_attr(analysis, "task_1")  # Primary Object
                 if task_1:
-                    # task_1 is typically a dict, e.g. {"object_name": "..."}
-                    photo_data["primary_object"] = str(task_1)
+                    photo_data["primary_object"] = get_attr(
+                        task_1, "primary_object", ""
+                    )
 
                 task_2 = get_attr(analysis, "task_2")  # OCR
                 if task_2:
-                    photo_data["ocr_text"] = task_2
+                    photo_data["ocr_text"] = get_attr(task_2, "ocr_text", [])
 
                 task_3 = get_attr(analysis, "task_3")  # Photo Specs
                 if task_3:
-                    photo_data["photo_specifications"] = task_3
+                    photo_data["photo_specifications"] = get_attr(
+                        task_3, "photo_specifications", {}
+                    )
 
             photo_output_str = json.dumps(photo_data, indent=2)
 
@@ -103,16 +106,14 @@ Analyze each pair independently. An "outlier" here requires a mismatch between t
       b) Primary Object of Product Photo - Product Specifications
       c) Product Title - Product Specifications 
       d) Within the Product Search Query
-     e) Photo Description ↔ Product Title
-     f) Photo Specifications ↔ Product Specifications
+      e) Photo Specifications ↔ Product Specifications
 
     Task 6:
 Category Analysis: Analyze the Category : "Category Name"  and identify the type of products it represents.
 Only flag as "outlier" if the entity does not belong in the category. Ignore spelling/formatting errors in the entities. Use the Category understanding from above to identify if there is a contradiction in:
       a) Primary Object ↔ Category
-      b) Photo Description ↔ Category
-      c) Product Search Query - Category Name
-      d) Product title - Category Name
+      b) Product Search Query - Category Name
+      c) Product title - Category Name
 
 
   Task 7:
@@ -152,12 +153,10 @@ Give response for task and subtasks of task 1,  task 2, task 5, task 6 and task 
     "photo_specs": {{ "status": "", "reason": "" }},
     "title_specs": {{ "status": "", "reason": "" }},
     "query_internal": {{ "status": "", "reason": "" }},
-    "photo_description_title": {{ "status": "", "reason": "" }},
     "photo_specs_specs": {{ "status": "", "reason": "" }}
   }},
   "task_6": {{
     "primary_object_category": {{ "status": "", "reason": "" }},
-    "photo_description_category": {{ "status": "", "reason": "" }},
     "query_category": {{ "status": "", "reason": "" }},
     "title_category": {{ "status": "", "reason": "" }}
   }},

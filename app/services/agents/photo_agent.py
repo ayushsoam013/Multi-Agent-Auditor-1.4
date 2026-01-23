@@ -82,10 +82,9 @@ class PhotoAgent(BaseAgent):
     def _get_photo_prompt(self) -> str:
         return """
 Instructions:
-  Task 1:
+    Task 1:
     Image Analysis: 
     a) Detect the primary object from Product Photo.
-    b) Provide a detailed textual description of the product as seen in the photo, focusing on visual attributes, state, and functionality.
 
   Task 2:
     OCR (Optical Character Recognition): Carefully Extract text from the Product Photo.
@@ -104,8 +103,7 @@ Task 3:
 Return the results in this strict JSON format:
 {
   "task_1": {
-    "primary_object": "string",
-    "photo_description": "string"
+    "primary_object": "string"
   },
   "task_2": {
     "ocr_text": ["string"]

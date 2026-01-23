@@ -49,7 +49,7 @@ class CategoryAgent(BaseAgent):
 
         photo_context = ""
         if photo_res and photo_res.analysis:
-            # Task 1: Visual Object & Description
+            # Task 1: Visual Object
             t1 = photo_res.analysis.task_1
             # Task 2: OCR
             t2 = photo_res.analysis.task_2
@@ -58,10 +58,12 @@ class CategoryAgent(BaseAgent):
                 ", ".join(t2.get("ocr_text", [])) if t2.get("ocr_text") else "None"
             )
 
+            # Safely get primary_object from PhotoTask1 model
+            primary_obj = getattr(t1, "primary_object", "N/A")
+
             photo_context = f"""
 Photo Analysis:
-- Visual Object: {t1.get("primary_object", "N/A")}
-- Visual Description: {t1.get("photo_description", "N/A")}
+- Visual Object: {primary_obj}
 - Detected Text (OCR): {ocr_text}
 """
 

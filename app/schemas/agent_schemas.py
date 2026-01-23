@@ -31,13 +31,17 @@ class BaseAgentResponse(BaseModel):
 
 
 # Photo Agent Specific Schemas
+class PhotoTask1(BaseModel):
+    primary_object: str
+
+
 class VisibilityStatus(BaseModel):
     status: str  # "outlier", "not_outlier", "can't_say"
     reason: str
 
 
 class PhotoAnalysisResult(BaseModel):
-    task_1: Dict[str, str] = Field(..., description="Primary object detection")
+    task_1: PhotoTask1 = Field(..., description="Primary object detection")
     task_2: Dict[str, List[str]] = Field(..., description="OCR text extraction")
     task_3: Dict[str, Dict[str, str]] = Field(..., description="Photo specifications")
     task_4: Dict[str, VisibilityStatus] = Field(
@@ -112,13 +116,11 @@ class TextualTask5(BaseModel):
     photo_specs: TaskStatus
     title_specs: TaskStatus
     query_internal: TaskStatus
-    photo_description_title: TaskStatus
     photo_specs_specs: TaskStatus
 
 
 class TextualTask6(BaseModel):
     primary_object_category: TaskStatus
-    photo_description_category: TaskStatus
     query_category: TaskStatus
     title_category: TaskStatus
 
