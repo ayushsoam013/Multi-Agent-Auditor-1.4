@@ -205,6 +205,50 @@ class MasterAgentResponse(BaseAgentResponse):
     reasons: List[str] = []
 
 
+# --- Code Review Agent Schemas ---
+
+
+class ReviewIssue(BaseModel):
+    file: str
+    line: Optional[int] = None
+    severity: str  # "info", "warning", "critical"
+    message: str
+    suggestion: Optional[str] = None
+
+
+class BackendReviewAnalysisResult(BaseModel):
+    summary: str
+    issues: List[ReviewIssue] = []
+    security_concerns: List[str] = []
+    performance_tips: List[str] = []
+
+
+class BackendReviewAgentResponse(BaseAgentResponse):
+    analysis: Optional[BackendReviewAnalysisResult] = None
+
+
+class StreamlitReviewAnalysisResult(BaseModel):
+    summary: str
+    issues: List[ReviewIssue] = []
+    ux_improvements: List[str] = []
+    state_management_issues: List[str] = []
+
+
+class StreamlitReviewAgentResponse(BaseAgentResponse):
+    analysis: Optional[StreamlitReviewAnalysisResult] = None
+
+
+class CodeReviewAnalysisResult(BaseModel):
+    summary: str
+    backend_review: Optional[BackendReviewAnalysisResult] = None
+    streamlit_review: Optional[StreamlitReviewAnalysisResult] = None
+    general_recommendations: List[str] = []
+
+
+class CodeReviewAgentResponse(BaseAgentResponse):
+    analysis: Optional[CodeReviewAnalysisResult] = None
+
+
 class MultiAgentAuditResult(BaseModel):
     """
     Consolidated response containing results from all agents in the pipeline.
@@ -219,5 +263,6 @@ class MultiAgentAuditResult(BaseModel):
     category_agent: Optional[CategoryAgentResponse] = None
     rca_agent: Optional[RCAAgentResponse] = None
     master_agent: Optional[MasterAgentResponse] = None
+    code_review_agent: Optional[CodeReviewAgentResponse] = None
     total_processing_time: float = 0.0
     total_cost: float = 0.0
