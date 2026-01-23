@@ -8,6 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 class RCAAgent(BaseAgent):
+    """
+    The RCA (Root Cause Analysis) Agent is the synthesizer of the pipeline.
+    It takes raw outputs from all specialized agents and performs a cross-modal
+    analysis to find contradictions and deep-seated quality issues.
+    """
+
     def __init__(self, model_name: Optional[str] = None):
         super().__init__(
             agent_name="RCAAgent",
@@ -16,6 +22,12 @@ class RCAAgent(BaseAgent):
         )
 
     async def _process_logic(self, request: AgentRequest) -> Dict[str, Any]:
+        """
+        RCA Logic:
+        1. Consolidate results from Photo, Title, Specs, and Category agents.
+        2. Identify core contradictions (e.g., photo shows a 'Chair' but title says 'Table').
+        3. Assign severity levels and recommended verdicts for the Master Agent to process.
+        """
         context = request.context or {}
         agent_results = context.get("agent_results", {})
 
@@ -62,7 +74,9 @@ Return the results in this strict JSON format:
 
         raw_text = response.get("content", "{}")
         try:
-            return json.loads(raw_text)
+            analysis_dict = json.loads(raw_text)
+            analysis_dict["_cost"] = response.get("costing", 0.0)
+            return analysis_dict
         except Exception as e:
             logger.error(f"Failed to parse RCAAgent response: {raw_text}")
             raise e

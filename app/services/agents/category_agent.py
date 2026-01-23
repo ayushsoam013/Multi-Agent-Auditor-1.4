@@ -8,6 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 class CategoryAgent(BaseAgent):
+    """
+    Specialized agent for category verification (MCAT alignment).
+    Uses both text and visual descriptions to ensure the product is in the right aisle.
+    """
+
     def __init__(self, model_name: Optional[str] = None):
         super().__init__(
             agent_name="CategoryAgent",
@@ -16,6 +21,11 @@ class CategoryAgent(BaseAgent):
         )
 
     async def _process_logic(self, request: AgentRequest) -> Dict[str, Any]:
+        """
+        Category Logic:
+        - Cross-references Title/Specs with the "Photo Context" provided by the Photo Agent.
+        - Validates if the current category is optimal or suggests a better alternative.
+        """
         prompt = self._get_category_prompt(request)
 
         response = await self.gen_service.chat_with_usage(
@@ -25,7 +35,9 @@ class CategoryAgent(BaseAgent):
 
         raw_text = response.get("content", "{}")
         try:
-            return json.loads(raw_text)
+            analysis_dict = json.loads(raw_text)
+            analysis_dict["_cost"] = response.get("costing", 0.0)
+            return analysis_dict
         except Exception as e:
             logger.error(f"Failed to parse CategoryAgent response: {raw_text}")
             raise e

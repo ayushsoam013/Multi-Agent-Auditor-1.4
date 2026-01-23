@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 class PhotoAgent(BaseAgent):
+    """
+    Multi-modal agent specialized in visual product analysis.
+    Uses Vision models to extract data and assess image quality.
+    """
+
     def __init__(self, model_name: Optional[str] = None):
         super().__init__(
             agent_name="PhotoAgent",
@@ -24,7 +29,11 @@ class PhotoAgent(BaseAgent):
 
     async def _process_logic(self, request: AgentRequest) -> Dict[str, Any]:
         """
-        Implements the 4-task photo analysis logic.
+        Photo Logic:
+        1. Object Detection & Description: What is the product?
+        2. OCR: What text is physically on the product or packaging?
+        3. Visual Specs: Extract technical details seen only in the image.
+        4. Visibility Assessment: Is the photo too blurry, cut off, or obscured for a listing?
         """
         if not request.image_path and not request.image_url:
             raise ValueError("PhotoAgent requires an image_path or image_url")
@@ -64,6 +73,7 @@ class PhotoAgent(BaseAgent):
                 raw_text = raw_text.strip("```json").strip("```").strip()
 
             analysis_dict = json.loads(raw_text)
+            analysis_dict["_cost"] = response.get("costing", 0.0)
             return analysis_dict
         except Exception as e:
             logger.error(f"Failed to parse PhotoAgent response: {raw_text}")

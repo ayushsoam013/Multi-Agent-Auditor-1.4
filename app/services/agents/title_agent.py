@@ -8,6 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 class TitleAgent(BaseAgent):
+    """
+    Specialized agent for auditing product titles.
+    Optimizes for searchability, clarity, and brand compliance.
+    """
+
     def __init__(self, model_name: Optional[str] = None):
         super().__init__(
             agent_name="TitleAgent",
@@ -16,6 +21,13 @@ class TitleAgent(BaseAgent):
         )
 
     async def _process_logic(self, request: AgentRequest) -> Dict[str, Any]:
+        """
+        Title Logic:
+        1. ISO-Analysis: Check title for typos and redundant words.
+        2. Entity Extraction: Identify brands and models for SEO.
+        3. Search Query Construction: Formulate the optimal query for the product.
+        4. Category Check: Ensure the title makes sense for the assigned MCAT.
+        """
         if not request.product_title:
             raise ValueError("TitleAgent requires a product_title")
 
@@ -79,7 +91,9 @@ Return all output in JSON format matching this schema:
             # but since we changed the schema in agent_schemas.py (Wait, I didn't change TitleAnalysisResult)
             # Actually, I should probably update the schema to match this new structure or keep it compatible.
             # For now, I'll return the dict and ensure the response_class can handle it.
-            return json.loads(raw_text)
+            analysis_dict = json.loads(raw_text)
+            analysis_dict["_cost"] = response.get("costing", 0.0)
+            return analysis_dict
         except Exception as e:
             logger.error(f"Failed to parse TitleAgent response: {raw_text}")
             raise e

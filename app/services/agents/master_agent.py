@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Dict, Any, Optional, List
 from app.services.agents.base_agent import BaseAgent
+from app.core.decision_grid import decision_grid_loader
 from app.schemas.agent_schemas import (
     AgentRequest,
     MasterAgentResponse,
@@ -17,6 +18,12 @@ logger = logging.getLogger(__name__)
 
 
 class MasterAgent(BaseAgent):
+    """
+    The Master Agent acts as the final decision maker in the multi-agent pipeline.
+    It synthesizes findings from all specialized agents (via the RCA results)
+    and applies a deterministic "Decision Grid" to produce a final audit verdict.
+    """
+
     def __init__(self, model_name: Optional[str] = None):
         super().__init__(
             agent_name="MasterAgent",
@@ -27,30 +34,31 @@ class MasterAgent(BaseAgent):
     async def _process_logic(self, request: AgentRequest) -> Dict[str, Any]:
         """
         Master Agent logic (v3 - CSV Grid):
-        1. Receive RCA result and other agent outputs.
-        2. Map findings to the 5 specific Decision Grid flags.
-        3. Look up decision in the exhaustive truth table.
-        4. Return structured response.
+        1. Receive RCA result and other agent outputs from the request context.
+        2. Map findings to the 5 specific Decision Grid flags (photo_category, title_category, etc.).
+        3. Look up the final decision in the exhaustive truth table (Decision Grid).
+        4. Generate a human-readable, polite recommendation for the seller if issues exist.
         """
         context = request.context or {}
         agent_results = context.get("agent_results", {})
         rca_res: Optional[RCAAgentResponse] = context.get("rca_result")
         title_res: Optional[TitleAgentResponse] = agent_results.get("title")
 
-        # 1. Extract Search Query
+        # 1. Extract Search Query from Title Agent (used for SEO/Searchability check)
         search_query = ""
         if title_res and title_res.analysis:
             search_query = title_res.analysis.task_3
             if isinstance(search_query, dict):
                 search_query = search_query.get("product_search_query", "")
 
-        # 2. Extract Facts (The 5 binary flags)
+        # 2. Extract Facts (The 5 binary flags required by the Truth Table)
         facts = self._extract_facts_from_rca(rca_res)
 
-        # 3. Apply New Decision Grid
+        # 3. Apply New Decision Grid (Truth Table Lookup)
         decision_text, decision_code = self._get_decision_from_grid(facts)
 
-        # Determine Status/Action based on decision text
+        # Determine Status/Action (PASS/FAIL/REVIEW) based on decision text
+        rec_cost = 0.0
         if not decision_text or decision_text.strip() == "":
             action = "PASS"
             decision_text = "Audit Passed"
@@ -61,8 +69,11 @@ class MasterAgent(BaseAgent):
             else:
                 action = "REVIEW"
 
-            # Generate Polite Recommendation using LLM
-            seller_recommendation = await self._generate_seller_recommendation(
+            # Generate Polite Recommendation using LLM based on the identified issues
+            (
+                seller_recommendation,
+                rec_cost,
+            ) = await self._generate_seller_recommendation(
                 decision_text, rca_res, request
             )
 
@@ -90,6 +101,7 @@ class MasterAgent(BaseAgent):
                 "title_specs_contradiction": facts["title_specs"],
                 "search_query_contradiction": False,
             },
+            "_cost": rec_cost if "rec_cost" in locals() else 0.0,
         }
 
     async def _generate_seller_recommendation(
@@ -97,9 +109,10 @@ class MasterAgent(BaseAgent):
         decision_text: str,
         rca_res: Optional[RCAAgentResponse],
         request: AgentRequest,
-    ) -> str:
+    ) -> tuple[str, float]:
         """
         Generates a polite, logical 2-line recommendation for the seller.
+        Returns (recommendation_text, cost)
         """
         try:
             issues_str = ""
@@ -125,11 +138,17 @@ class MasterAgent(BaseAgent):
             RECOMMENDATION:
             """
 
-            recommendation = await self.gen_service.generate_content(prompt)
-            return recommendation.strip()
+            # Use chat_with_usage to get cost
+            response = await self.gen_service.chat_with_usage(
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.get("content", "").strip(), response.get("costing", 0.0)
         except Exception as e:
             logger.error(f"Error generating recommendation: {e}")
-            return f"Please review your product listing details (Title, Photo, and Specs) to ensure they are consistent and accurate."
+            return (
+                f"Please review your product listing details (Title, Photo, and Specs) to ensure they are consistent and accurate.",
+                0.0,
+            )
 
     def _extract_facts_from_rca(
         self, rca_res: Optional[RCAAgentResponse]
@@ -186,59 +205,7 @@ class MasterAgent(BaseAgent):
         Implements the 32-row truth table from 'auditmate messging - Sheet2.csv'.
         Returns (English Message, Rule Code)
         """
-        code = "".join(
-            [
-                "1" if facts["photo_category"] else "0",
-                "1" if facts["title_category"] else "0",
-                "1" if facts["photo_title"] else "0",
-                "1" if facts["photo_specs"] else "0",
-                "1" if facts["title_specs"] else "0",
-            ]
-        )
-
-        key = (
-            1 if facts["photo_category"] else 0,
-            1 if facts["title_category"] else 0,
-            1 if facts["photo_title"] else 0,
-            1 if facts["photo_specs"] else 0,
-            1 if facts["title_specs"] else 0,
-        )
-
-        grid = {
-            (0, 0, 0, 0, 0): "",
-            (0, 0, 0, 0, 1): "Review Title & Spec {A}",
-            (0, 0, 0, 1, 0): "Review Photo & Spec {A}",
-            (0, 0, 0, 1, 1): "Specs {A,B,C...} Rejected",
-            (0, 0, 1, 0, 0): "Review Title & Photo",
-            (0, 0, 1, 0, 1): "Title Rejected",
-            (0, 0, 1, 1, 0): "Photo Rejected",
-            (0, 0, 1, 1, 1): "Complete Product Rejected",
-            (0, 1, 0, 0, 0): "Review Title & Category {A}",
-            (0, 1, 0, 0, 1): "Title Rejected",
-            (0, 1, 0, 1, 0): "Complete Product Rejected",
-            (0, 1, 0, 1, 1): "Complete Product Rejected",
-            (0, 1, 1, 0, 0): "Title Rejected",
-            (0, 1, 1, 0, 1): "Title Rejected",
-            (0, 1, 1, 1, 0): "Complete Product Rejected",
-            (0, 1, 1, 1, 1): "Complete Product Rejected",
-            (1, 0, 0, 0, 0): "Review Photo & Category {A}",
-            (1, 0, 0, 0, 1): "Complete Product Rejected",
-            (1, 0, 0, 1, 0): "Photo Rejected",
-            (1, 0, 0, 1, 1): "Complete Product Rejected",
-            (1, 0, 1, 0, 0): "Photo Rejected",
-            (1, 0, 1, 0, 1): "Complete Product Rejected",
-            (1, 0, 1, 1, 0): "Photo Rejected",
-            (1, 0, 1, 1, 1): "Complete Product Rejected",
-            (1, 1, 0, 0, 0): "Category {A} Rejected",
-            (1, 1, 0, 0, 1): "Complete Product Rejected",
-            (1, 1, 0, 1, 0): "Complete Product Rejected",
-            (1, 1, 0, 1, 1): "Complete Product Rejected",
-            (1, 1, 1, 0, 0): "Complete Product Rejected",
-            (1, 1, 1, 0, 1): "Complete Product Rejected",
-            (1, 1, 1, 1, 0): "Complete Product Rejected",
-            (1, 1, 1, 1, 1): "Complete Product Rejected",
-        }
-        return grid.get(key, "Review Required"), code
+        return decision_grid_loader.get_decision_text(facts)
 
     def _populate_final_errors(
         self, facts: Dict[str, bool], rca_res: Optional[RCAAgentResponse]
