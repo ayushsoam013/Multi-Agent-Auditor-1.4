@@ -40,34 +40,34 @@ class RCAAgent(BaseAgent):
         )
 
         prompt = f"""
-You are a Root Cause Analysis (RCA) specialist for product auditing.
-Below are the results from various specialized agents that audited a product.
+            You are a Root Cause Analysis (RCA) specialist for product auditing.
+            Below are the results from various specialized agents that audited a product.
 
-Agent Results:
-{context_str}
+            Agent Results:
+            {context_str}
 
-Instructions:
-1. Synthesize all findings.
-2. Identify the root cause for any issues (outliers, contradictions, errors).
-3. Determine the severity of each issue.
-4. Recommend a final verdict (PASS, FAIL, REVIEW).
-5. Provide a summary of your analysis.
+            Instructions:
+            1. Synthesize all findings.
+            2. Identify the root cause for any issues (outliers, contradictions, errors).
+            3. Determine the severity of each issue.
+            4. Recommend a final verdict (PASS, FAIL, REVIEW).
+            5. Provide a summary of your analysis.
 
-Return the results in this strict JSON format:
-{{
-  "root_cause_summary": "string",
-  "identified_issues": [
-    {{
-      "issue_type": "PHOTO_QUALITY | TITLE_QUALITY | SPECS_QUALITY | TITLE_SPECS_CONTRADICTION | PHOTO_TITLE_CONTRADICTION | PHOTO_SPECS_CONTRADICTION | PHOTO_CATEGORY_MISMATCH | TITLE_CATEGORY_MISMATCH | CATEGORY_MISMATCH | OTHER",
-      "severity": "LOW/MEDIUM/HIGH/CRITICAL",
-      "description": "string",
-      "evidence": "string"
-    }}
-  ],
-  "recommended_verdict": "PASS/FAIL/REVIEW",
-  "confidence": float (0.0 to 1.0)
-}}
-"""
+            Return the results in this strict JSON format:
+            {{
+            "root_cause_summary": "string",
+            "identified_issues": [
+                {{
+                "issue_type": "PHOTO_QUALITY | TITLE_QUALITY | SPECS_QUALITY | TITLE_SPECS_CONTRADICTION | PHOTO_TITLE_CONTRADICTION | PHOTO_SPECS_CONTRADICTION | PHOTO_CATEGORY_MISMATCH | TITLE_CATEGORY_MISMATCH | CATEGORY_MISMATCH | OTHER",
+                "severity": "LOW/MEDIUM/HIGH/CRITICAL",
+                "description": "string",
+                "evidence": "string"
+                }}
+            ],
+            "recommended_verdict": "PASS/FAIL/REVIEW",
+            "confidence": float (0.0 to 1.0)
+            }}
+        """
         response = await self.gen_service.chat_with_usage(
             messages=[{"role": "user", "content": prompt}],
             config={"response_mime_type": "application/json"},

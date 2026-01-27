@@ -101,7 +101,11 @@ c) Internal Contradiction
 
   Task 5: 
     Identify if there is contradiction in:
-Analyze each pair independently. An "outlier" here requires a mismatch between the two listed sources. If the sources agree on the core fact, it is "not outlier," even if one source is poorly formatted or has internal errors.
+Analyze each pair independently. An "outlier" requires that the photo and text describe DIFFERENT PRODUCTS or different levels of completeness (part vs. whole).
+
+Key principle: Does the photo show the EXACT product a buyer would receive based 
+on the Title/Specs? If the photo shows only a component while text describes 
+the complete product, flag as outlier.
       a) Primary Object of Product Photo- Title
       b) Primary Object of Product Photo - Product Specifications
       c) Product Title - Product Specifications 
@@ -115,12 +119,22 @@ Only flag as "outlier" if the entity does not belong in the category. Ignore spe
       b) Product Search Query - Category Name
       c) Product title - Category Name
 
-
   Task 7:
-Core Alignment Check : Verify if the product's primary function and operating mechanism match the category's fundamental definition. Flag as outlier if:
-Mechanism Mismatch: The product operates differently than the category implies (e.g., manual vs. electric, stovetop vs. automatic).
-Entity Mismatch: The product is a toy, model, accessory, or spare part, while the category represents the functional standalone item.
-Visual Mimicry: The product is designed to look like the category item but lacks its core utility (e.g., a camera-shaped lighter).
+Core Alignment Check: In a B2B marketplace, buyers expect the photo to show THE COMPLETE PRODUCT they're purchasing, not accessories or components.
+
+Flag as OUTLIER if:
+a) Part vs. Whole: Photo shows a component/part/accessory while Title/Category describes the complete functional product
+   Examples: Chair base for "Revolving Chair", Laptop battery for "Laptop", Wheel for "Bicycle"
+
+b) Mechanism Mismatch: Product operates fundamentally differently than category implies
+   Examples: Manual pump for "Electric Water Pump", Stovetop kettle for "Electric Kettle"
+
+c) Visual Mimicry: Product mimics category's appearance but lacks core function
+   Examples: Camera-shaped lighter, Toy laptop, Decorative fake plant
+
+CRITICAL: If Title/Specs describe a complete product but Photo shows only a part/component, 
+always flag as outlier regardless of how "related" they seem.
+
 Give all output in JSON format.
 Give response for task and subtasks of task 1,  task 2, task 5, task 6 and task 7 as outlier / not outlier / can't say for each subtask. Give one reason for each subtask of task 1,  task 2, task 5, task 6 and task 7.
 
