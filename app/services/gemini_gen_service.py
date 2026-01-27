@@ -70,7 +70,7 @@ class GeminiGenService:
                 system_instruction=system_instruction, **cfg
             )
 
-        response = self.client.models.generate_content(
+        response = await self.client.aio.models.generate_content(
             model=model_name, contents=formatted_messages, config=gen_config
         )
 
@@ -131,10 +131,10 @@ class GeminiGenService:
 
         return round(input_cost + output_cost, 6)
 
-    def health_check(self) -> bool:
+    async def health_check(self) -> bool:
         try:
             # Quick ping
-            self.client.models.generate_content(
+            await self.client.aio.models.generate_content(
                 model=self.model_name,
                 contents="ping",
                 config=types.GenerateContentConfig(max_output_tokens=1),

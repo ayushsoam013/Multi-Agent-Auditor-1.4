@@ -48,7 +48,7 @@ class LiteLLMService:
         # Ensure litellm_proxy/ prefix
         model_name = self._ensure_litellm_proxy_prefix(model_name)
 
-        response = litellm.completion(
+        response = await litellm.acompletion(
             model=model_name,
             messages=messages,
             api_base=self.api_base,
@@ -81,7 +81,7 @@ class LiteLLMService:
         # Ensure litellm_proxy/ prefix
         model_name = self._ensure_litellm_proxy_prefix(model_name)
 
-        response = litellm.completion(
+        response = await litellm.acompletion(
             model=model_name,
             messages=formatted_messages,
             api_base=self.api_base,
@@ -128,7 +128,7 @@ class LiteLLMService:
         # Ensure litellm_proxy/ prefix
         model_name = self._ensure_litellm_proxy_prefix(model_name)
 
-        response = litellm.completion(
+        response = await litellm.acompletion(
             model=model_name,
             messages=formatted_messages,
             api_base=self.api_base,
@@ -160,21 +160,23 @@ class LiteLLMService:
             "model": model_name,
         }
 
-    def health_check(self) -> bool:
+    async def health_check(self) -> bool:
         try:
             # User requested specific health check via GET model URL
-            response = requests.get(
-                f"{self.api_base}/models",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                params={
-                    "return_wildcard_routes": "false",
-                    "include_model_access_groups": "false",
-                    "only_model_access_groups": "false",
-                    "include_metadata": "false",
-                },
-                timeout=5,
-            )
-            return response.status_code == 200
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{self.api_base}/models",
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    params={
+                        "return_wildcard_routes": "false",
+                        "include_model_access_groups": "false",
+                        "only_model_access_groups": "false",
+                        "include_metadata": "false",
+                    },
+                    timeout=5,
+                ) as response:
+                    return response.status == 200
         except Exception as e:
             print(f"LiteLLM Health Check Failed: {e}")
             return False

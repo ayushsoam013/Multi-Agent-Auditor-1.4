@@ -13,7 +13,7 @@ async def gemini_health():
     from app.services.llm_manager import llm_manager
     # Check generation service of active provider
     service = llm_manager.get_service()
-    if service.health_check():
+    if await service.health_check():
         return HealthResponse(status="ok", details={"provider": llm_manager.get_current_provider()})
     raise HTTPException(status_code=503, detail=f"{llm_manager.get_current_provider()} service unavailable")
 
@@ -22,6 +22,6 @@ async def gemini_health():
 async def gemini_gen_health():
     from app.services.llm_manager import llm_manager
     service = llm_manager.get_service()
-    if service.health_check():
+    if await service.health_check():
          return HealthResponse(status="ok", details={"provider": llm_manager.get_current_provider()})
     raise HTTPException(status_code=503, detail="Service unavailable")
