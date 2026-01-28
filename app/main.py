@@ -20,6 +20,15 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Create saved_audits directory if it doesn't exist (it should be created by the service, but good to be safe)
+os.makedirs("saved_audits", exist_ok=True)
+
+# Mount static files
+app.mount("/static/saved_audits", StaticFiles(directory="saved_audits"), name="saved_audits")
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Embeddings Optimization API", "docs": "/docs"}

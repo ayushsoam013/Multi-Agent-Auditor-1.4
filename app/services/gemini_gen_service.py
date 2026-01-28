@@ -95,10 +95,7 @@ class GeminiGenService:
     def _calculate_cost(self, model: str, usage: Optional[Dict[str, int]]) -> float:
         """
         Calculate cost in USD based on model and usage.
-        Pricing (per 1M tokens):
-        - gemini-1.5-flash: $0.075 input, $0.30 output
-        - gemini-1.5-pro: $3.50 input, $10.50 output
-        - gemini-2.0-flash: $0.10 input, $0.40 output (Estimated)
+        Pricing (per 1M tokens)
         """
         if not usage:
             return 0.0
@@ -108,10 +105,9 @@ class GeminiGenService:
 
         # Pricing table (per 1M tokens)
         pricing = {
-            "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
-            "gemini-1.5-pro": {"input": 3.50, "output": 10.50},
             "gemini-2.0-flash": {"input": 0.10, "output": 0.40},
-            "gemini-2.5-flash-lite": {"input": 0.075, "output": 0.30},
+            "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
+            "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40},
         }
 
         # Default to highest if unknown, or 0? Let's default to flash pricing as fallback or 0.

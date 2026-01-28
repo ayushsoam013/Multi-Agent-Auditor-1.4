@@ -5,7 +5,10 @@ import shutil
 import uuid
 from app.schemas.agent_schemas import AgentRequest, MultiAgentAuditResult
 from app.services.multi_agent_orchestrator import orchestrator
+from app.services.audit_persistence import audit_persistence
 from app.core.config import settings
+import json
+from fastapi import Body
 
 router = APIRouter()
 
@@ -53,3 +56,52 @@ async def perform_multi_agent_audit(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/save")
+async def save_audit_session(
+    product_title: str = Form(...),
+    product_specs: str = Form(...),
+    mcat_name: str = Form(...),
+    audit_result: str = Form(...),  # JSON string of MultiAgentAuditResult
+    file: UploadFile = File(...),
+):
+    """
+    Saves the current audit session (inputs, image, and result).
+    Returns a session ID.
+    """
+    try:
+        # Parse audit result JSON
+        audit_result_dict = json.loads(audit_result)
+        
+        # Prepare data package
+        session_data = {
+            "product_title": product_title,
+            "product_specs": product_specs,
+            "mcat_name": mcat_name,
+            "audit_result": audit_result_dict
+        }
+        
+        # Save using persistence service
+        session_id = audit_persistence.save_audit_session(session_data, file)
+        
+        return {"session_id": session_id, "message": "Session saved successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save session: {str(e)}")
+
+
+@router.get("/session/{session_id}")
+async def get_audit_session(session_id: str):
+    """
+    Retrieves a saved audit session by ID.
+    """
+    try:
+        data = audit_persistence.get_audit_session(session_id)
+        if not data:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve session: {str(e)}")

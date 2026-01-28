@@ -1,8 +1,10 @@
 import json
 import logging
+import re
 from typing import Dict, Any, Optional, List
 from app.core.config import settings
 from app.services.agents.base_agent import BaseAgent
+
 from app.core.decision_grid import decision_grid_loader
 from app.schemas.agent_schemas import (
     AgentRequest,
@@ -106,45 +108,77 @@ class MasterAgent(BaseAgent):
         request: AgentRequest,
     ) -> tuple[str, float]:
         """
-        Generates a polite, logical 2-line recommendation for the seller.
-        Returns (recommendation_text, cost)
+        Deterministic replacement for LLM recommendation.
+        Finalizes the decision grid message by filling in placeholders {A}, {B}, etc.
+        Returns (formatted_message, 0.0 cost)
         """
-        try:
-            issues_str = ""
-            if rca_res and rca_res.analysis:
-                issues_str = "\n".join(
-                    [f"- {i.description}" for i in rca_res.analysis.identified_issues]
+        if not decision_text or decision_text == "Audit Passed":
+            return decision_text or "Audit Passed", 0.0
+
+        # 1. Gather dynamic content
+        attributes = self._extract_attributes_from_context(request, rca_res)
+        attr_str = ", ".join(attributes) if attributes else "details"
+        category = request.mcat_name or "Category"
+
+        # 2. Perform replacements based on the placeholders in decision_grid.json
+        recommendation = decision_text
+
+        # Fill Category placeholders
+        if "Category" in recommendation:
+            recommendation = recommendation.replace("{A}", category)
+            recommendation = recommendation.replace("{A,B,C...}", category)
+
+        # Fill Spec/Attribute placeholders
+        if "Spec" in recommendation or "Specs" in recommendation:
+            recommendation = recommendation.replace("{A}", attr_str)
+            recommendation = recommendation.replace("{A,B,C...}", attr_str)
+
+        return recommendation, 0.0
+
+    def _extract_attributes_from_context(
+        self, request: AgentRequest, rca_res: Optional[RCAAgentResponse]
+    ) -> List[str]:
+        """
+        Heuristic to find specific specification names (e.g., 'Color', 'Material')
+        from RCA issues or Textual Agent findings.
+        """
+        attributes = []
+
+        # 1. Extract from RCA issues descriptions/evidence
+        if rca_res and rca_res.analysis:
+            for issue in rca_res.analysis.identified_issues:
+                # Look for quoted strings which usually denote attribute names
+                matches = re.findall(
+                    r"['\"]([^'\"]+)['\"]", f"{issue.description} {issue.evidence}"
                 )
+                attributes.extend(matches)
 
-            prompt = f"""
-            You are a polite quality assurance expert. A product listing has been audited.
-            
-            AUDIT OUTCOME: {decision_text}
-            SPECIFIC ISSUES FOUND:
-            {issues_str if issues_str else "None. The product looks good."}
-            
-            PRODUCT TITLE: {request.product_title}
-            
-            TASK: Write a polite, reasonable, and helpful recommendation to the seller.
-            - If passed: Congratulate them on a high-quality listing.
-            - If issues found: Suggest improvements based on specific errors.
-            - Tone: Suggestive, polite, and logical.
-            - Length: Strictly no more than 2 lines.
-            
-            RECOMMENDATION:
-            """
+        # 2. Extract from Textual Agent context if available
+        context = request.context or {}
+        agent_results = context.get("agent_results", {})
+        textual_res: Optional[TextualAgentResponse] = agent_results.get("textual")
 
-            # Use chat_with_usage to get cost
-            response = await self.gen_service.chat_with_usage(
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.get("content", "").strip(), response.get("costing", 0.0)
-        except Exception as e:
-            logger.error(f"Error generating recommendation: {e}")
-            return (
-                f"Please review your product listing details (Title, Photo, and Specs) to ensure they are consistent and accurate.",
-                0.0,
-            )
+        if textual_res and textual_res.analysis:
+            t5 = textual_res.analysis.task_5
+            # Scan specific tasks that relate to specs
+            for field in ["photo_specs", "title_specs", "photo_specs_specs"]:
+                status_obj = getattr(t5, field, None)
+                if status_obj and getattr(status_obj, "status", "") == "outlier":
+                    reason = getattr(status_obj, "reason", "")
+                    matches = re.findall(r"['\"]([^'\"]+)['\"]", reason)
+                    attributes.extend(matches)
+
+        # 3. Clean up: Deduplicate, title-case, and filter out obvious non-attributes
+        seen = set()
+        clean_attrs = []
+        for a in attributes:
+            a_clean = a.strip().title()
+            if len(a_clean) > 1 and a_clean not in seen and len(a_clean.split()) <= 3:
+                # Basic check to avoid grabbing whole sentences
+                seen.add(a_clean)
+                clean_attrs.append(a_clean)
+
+        return clean_attrs
 
     def _extract_facts_from_rca(
         self, rca_res: Optional[RCAAgentResponse]

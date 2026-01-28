@@ -13,7 +13,7 @@ class LiteLLMService:
     def __init__(self, model_name: str = None):
         # Read from environment variables or use defaults (without litellm_proxy/ prefix)
         default_model = getattr(
-            settings, "LITELLM_DEFAULT_MODEL", "google/gemini-2.5-flash"
+            settings, "LITELLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite"
         )
 
         self.model_name = model_name or default_model
